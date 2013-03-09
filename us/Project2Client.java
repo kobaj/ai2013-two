@@ -69,7 +69,7 @@ public class Project2Client extends TeamClient
 	final public static int SQUARE_PADDING = 150;
 	
 	// when calculating a multiplication vector (so we fly faster) how far out should the vector be placed relative to our goal?
-	final public static double magnitude_vector = 2000.0;
+	final public static double magnitude_vector = 2500.0;
 	
 	// how many loops should we go through before recalculating astar and nodes
 	final public static int MAX_ITERATIONS = 40;
@@ -313,6 +313,9 @@ public class Project2Client extends TeamClient
 					
 					if (global_output)
 						System.out.println("Finished with ship: " + ship.toString());
+					
+					//last (do not delete me)
+					System.gc();
 				}
 				else
 				{
