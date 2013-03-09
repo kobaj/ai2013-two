@@ -13,12 +13,12 @@ import spacewar2.objects.*;
 // A directed path from a to b with no properties
 class Relation{
 	
-	// A and B - the edges this relation connects
+	// A and B - the objects/edges this relation connects
 	protected SpacewarObject a;
 	protected SpacewarObject b;
 	
-	// make a relation between A and B if possible. This is the base class so it is never possible
-	public static Relation make(SpacewarObject a, SpacewarObject b, Toroidal2DPhysics space,ShadowManager shadow_manager){
+	// make a relation between A and B if possible. Always return null in the base class
+	public static Relation make(SpacewarObject a, SpacewarObject b, Toroidal2DPhysics space){
 		return null;
 	}
 	
@@ -46,16 +46,16 @@ class Relation{
 	
 }
 
-// Is A approaching the current position of B ?
+// Relation: A is approaching the current position of B
 class ApproachingCurrentPosition extends Relation{
 
 	// make the relation if a will approximately reach B's location in some number of steps
-	public static ApproachingCurrentPosition make(SpacewarObject a, SpacewarObject b, Toroidal2DPhysics space, ShadowManager shadow_manager){
+	public static ApproachingCurrentPosition make(SpacewarObject a, SpacewarObject b, Toroidal2DPhysics space){
 
 		// set constants
 		int radius = 10;
-		int steps = 20;
-		int resolution = 2;
+		int steps = 15;
+		int resolution = 3;
 
 		// get velocity vector and position for A
 		Vector2D v = a.getPosition().getTranslationalVelocity();
@@ -105,25 +105,30 @@ public class KnowledgeGraph{
 	protected ArrayList<SpacewarObject> vertices;
 	protected ArrayList<Relation> edges;
 	
-	public KnowledgeGraph(Toroidal2DPhysics space, ShadowManager shadow_manager,Ship theShip){
+	public KnowledgeGraph(Toroidal2DPhysics space, ShadowManager shadow_manager){
 		
 		edges = new ArrayList<Relation>();
 		vertices = new ArrayList<SpacewarObject>();
 		
 		vertices.addAll(space.getAsteroids());
 		vertices.addAll(space.getShips());
+		vertices.addAll(space.getWeapons());
 		
 		
 		for(SpacewarObject a : vertices){
 			for(SpacewarObject b : vertices){
-				if(a.getClass().isAssignableFrom(Ship.class) && b.getClass().isAssignableFrom(Asteroid.class)){
+				
+				// Add relations for Ships and asteroids approaching eachother 
+				if( !a.equals(b) && ( (a.getClass().isAssignableFrom(Bullet.class) && b.getClass().isAssignableFrom(Ship.class) ) || (a.getClass().isAssignableFrom(Ship.class) && b.getClass().isAssignableFrom(Asteroid.class)))){
 					// add relations between asteroids and ships where one is headed towards
 					// the other one's current position
-					Relation r = ApproachingCurrentPosition.make(a, b, space,shadow_manager);
+					Relation r = ApproachingCurrentPosition.make(a, b, space);
 					if(r != null ){
 						edges.add(r);
 					}
 				}
+				
+				
 			}
 		}
 		
