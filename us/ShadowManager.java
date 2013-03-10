@@ -26,7 +26,7 @@ public class ShadowManager
 	
 	private Random random;
 	
-	private boolean draw = false;
+	private boolean draw = true;
 	
 	/**
 	 * Setup the shadow manager

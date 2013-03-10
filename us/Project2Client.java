@@ -1,4 +1,3 @@
-
 package grif1252;
 
 import grif1252.Node.NodeType;
@@ -72,7 +71,7 @@ public class Project2Client extends TeamClient
 	final public static double magnitude_vector = 2500.0;
 	
 	// how many loops should we go through before recalculating astar and nodes
-	final public static int MAX_ITERATIONS = 60;
+	final public static int MAX_ITERATIONS = 40;
 	HashMap<Ship, Integer> current_iterations;
 	
 	// screen resolution
@@ -137,25 +136,14 @@ public class Project2Client extends TeamClient
 		
 		HashMap<UUID, SpacewarAction> actions = new HashMap<UUID, SpacewarAction>();
 		Toroidal2DPhysics local_space = space.deepClone();
-
-		// new stuff
-		KnowledgeGraph kg = new KnowledgeGraph(space,my_shadow_manager);
-
 		
-		
+		// old loop
 		for (SpacewarObject actionable : actionableObjects)
 			if (actionable instanceof Ship)
 			{
 				Ship ship = (Ship) actionable;
 				SpacewarAction current = ship.getCurrentAction();
-
-				// relations from ship
-				ArrayList<Relation> relations = kg.getRelationsFrom(ship);
-				for(Relation r : relations){
-					my_shadow_manager.put(r.A().getId().toString() + " to " + r.B().getId().toString()  , new LineShadow(r.B().getPosition(), r.A().getPosition(), new Vector2D(r.A().getPosition().getX() - r.B().getPosition().getX(), r.A().getPosition().getY() - r.B().getPosition().getY())));
-					//my_shadow_manager.put(r.B().getId().toString(), new CircleShadow(2, new Color(0,0,255), r.B().getPosition()));
-				}
-
+				
 				// work on iterations
 				if (current_iterations.get(ship) == null)
 					current_iterations.put(ship, MAX_ITERATIONS);
@@ -196,26 +184,8 @@ public class Project2Client extends TeamClient
 						goal_exists = false;
 					}
 				
-				/*boolean enemy_closer = false;
-				if(goal != null){
-					ArrayList<Relation> othersApproachingGoal = kg.getRelationsTo(goal, ApproachingCurrentPosition.class);
-					ArrayList<Relation> usApproaching = kg.getRelations(ship, goal, ApproachingCurrentPosition.class) ;
-					for(Relation o : othersApproachingGoal){
-						if(!o.A().equals(ship)){
-							System.out.println("checking enemy distance to goal");
-							if(usApproaching.size() == 0){
-								enemy_closer = true;
-								System.out.println("enemy close to goal, giving up");
-							}else if(((ApproachingCurrentPosition) usApproaching.get(0)).steps() > ((ApproachingCurrentPosition) o).steps()){
-								enemy_closer = true ;
-								System.out.println("enemy close to goal, giving up");
-							}
-						}
-					}
-				}*/
-				
 				// get next ship action
-				if (current == null || current.isMovementFinished(space) || current_iterations.get(ship) <= 0 || !goal_exists /*|| enemy_closer*/)
+				if (current == null || current.isMovementFinished(space) || current_iterations.get(ship) <= 0 || !goal_exists /* || enemy_closer */)
 				{
 					current_iterations.put(ship, MAX_ITERATIONS);
 					
@@ -322,13 +292,6 @@ public class Project2Client extends TeamClient
 					
 					double jakobs_magic_multiplier = magnitude_vector / v.getMagnitude();
 					
-					//if(kg.getRelations(ship, goal, ApproachingCurrentPosition.class).size() > 0){
-						
-					//	System.out.println("Final Approach - Increasing multiplier");
-					//	my_shadow_manager.put(ship.getId().toString() + " to " + goal.getId().toString()  , new LineShadow(goal.getPosition(), ship.getPosition(), new Vector2D(ship.getPosition().getX() - goal.getPosition().getX(), ship.getPosition().getY() - goal.getPosition().getY())));
-					//	jakobs_magic_multiplier *= 5;
-					//}
-					
 					Position extended_goal = new Position(newGoal.getX() + distance_unit.getXValue() * jakobs_magic_multiplier, newGoal.getY() + distance_unit.getYValue() * jakobs_magic_multiplier);
 					newAction = new MoveAction(local_space, currentPosition, extended_goal);
 					
@@ -336,13 +299,17 @@ public class Project2Client extends TeamClient
 					
 					my_shadow_manager.put(ship.getId() + "destination", goal_shadow);
 					
+					// new stuff
+					KnowledgeGraph kg = new KnowledgeGraph(space, my_shadow_manager);
+					newAction = goalHueristic(local_space, ship, kg, newAction);
+					
 					// finally
 					actions.put(ship.getId(), newAction);
 					
 					if (global_output)
 						System.out.println("Finished with ship: " + ship.toString());
 					
-					//last (do not delete me)
+					// last (do not delete me)
 					System.gc();
 				}
 				else
@@ -355,6 +322,75 @@ public class Project2Client extends TeamClient
 		if (global_output)
 			System.out.println("TimeSpent in Client: " + (System.currentTimeMillis() - time));
 		return actions;
+	}
+	
+	private ArrayList<Asteroid> get_impending_asteroid_collision_uuids(KnowledgeGraph kg, Ship ship)
+	{
+		ArrayList<Relation> relations = kg.getRelationsFrom(ship);
+		ArrayList<Asteroid> collision_asteroid = new ArrayList<Asteroid>();
+		for (Relation r : relations)
+		{
+			if (ShipApproachingAsteroid.class.isAssignableFrom(r.getClass()))
+				if (Asteroid.class.isAssignableFrom(r.B().getClass()))
+				{
+					Asteroid b = Asteroid.class.cast(r.B());
+					if (b.isMineable())
+						collision_asteroid.add(b);
+				}
+		}
+		return collision_asteroid;
+	}
+	
+	private SpacewarAction goalHueristic(Toroidal2DPhysics space, Ship ship, KnowledgeGraph kg, SpacewarAction newAction)
+	{
+		// first lets find out if the enemy and our ship are going towards the same goal
+		ArrayList<Asteroid> my_asteroids = get_impending_asteroid_collision_uuids(kg, ship);
+		
+		for(Asteroid as: my_asteroids)
+			this.my_shadow_manager.put("my_collision" + ship.getId(), new ColorLineShadow(ship.getPosition(), as.getPosition(), Color.cyan));
+		
+		for (Ship other_ship : space.getShips())
+		{
+			if (!other_ship.getId().equals(ship.getId()))
+			{
+				ArrayList<Asteroid> other_asteroids = get_impending_asteroid_collision_uuids(kg, other_ship);
+				
+				for(Asteroid as: other_asteroids)
+					this.my_shadow_manager.put(other_ship.getId() + "their_collision", new ColorLineShadow(other_ship.getPosition(), as.getPosition(), Color.LIGHT_GRAY));
+				
+				
+				// matching ids
+				for (Asteroid my_collision : my_asteroids)
+					for (Asteroid other_collision : other_asteroids)
+						if (other_collision.getId().equals(my_collision.getClass()))
+						{
+							double my_distance = space.findShortestDistance(ship.getPosition(), other_collision.getPosition());
+							double their_distance = space.findShortestDistance(other_ship.getPosition(), other_collision.getPosition());
+							
+							Color my_color = Color.GREEN;
+							Color their_color = Color.RED;
+							
+							if (my_distance > their_distance)
+							{
+								my_color = Color.RED;
+								their_color = Color.GREEN;
+							}
+							
+							// draw the impending doom
+							this.my_shadow_manager.put(ship.getId() + "my_collision", new ColorLineShadow(ship.getPosition(), other_collision.getPosition(), my_color));
+							this.my_shadow_manager.put(other_ship.getId() + "their_collision", new ColorLineShadow(other_ship.getPosition(), other_collision.getPosition(), my_color));
+						}
+			}
+		}
+		
+		/*
+		 * boolean enemy_closer = false; if(goal != null){ ArrayList<Relation> othersApproachingGoal = kg.getRelationsTo(goal, ApproachingCurrentPosition.class); ArrayList<Relation> usApproaching =
+		 * kg.getRelations(ship, goal, ApproachingCurrentPosition.class) ; for(Relation o : othersApproachingGoal){ if(!o.A().equals(ship)){ System.out.println("checking enemy distance to goal");
+		 * if(usApproaching.size() == 0){ enemy_closer = true; System.out.println("enemy close to goal, giving up"); }else if(((ApproachingCurrentPosition) usApproaching.get(0)).steps() >
+		 * ((ApproachingCurrentPosition) o).steps()){ enemy_closer = true ; System.out.println("enemy close to goal, giving up"); } } } }
+		 */
+		
+		return newAction;
 	}
 	
 	// find start and goal nodes
