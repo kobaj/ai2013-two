@@ -17,11 +17,6 @@ class Relation{
 	protected SpacewarObject a;
 	protected SpacewarObject b;
 	
-	// make a relation between A and B if possible. Always return null in the base class
-	public static Relation make(SpacewarObject a, SpacewarObject b, Toroidal2DPhysics space){
-		return null;
-	}
-	
 	// constructor
 	public Relation(SpacewarObject a, SpacewarObject b){
 		this.a = a;
@@ -47,10 +42,10 @@ class Relation{
 }
 
 // Relation: A is approaching the current position of B
-class ApproachingCurrentPosition extends Relation{
+class ShipApproachingAsteroid extends Relation{
 
 	// make the relation if a will approximately reach B's location in some number of steps
-	public static ApproachingCurrentPosition make(SpacewarObject a, SpacewarObject b, Toroidal2DPhysics space){
+	public static ShipApproachingAsteroid make(Ship a, Asteroid b, Toroidal2DPhysics space){
 
 		// set constants
 		int radius = 20;
@@ -66,7 +61,7 @@ class ApproachingCurrentPosition extends Relation{
 		while(i < steps){
 			// return relation if approximate collision found at this step
 			if(space.findShortestDistance(b.getPosition(), futurePosition) < radius){
-				ApproachingCurrentPosition r = new ApproachingCurrentPosition(a,b,i);
+				ShipApproachingAsteroid r = new ShipApproachingAsteroid(a,b,i);
 				return r;
 			}
 			
@@ -92,12 +87,67 @@ class ApproachingCurrentPosition extends Relation{
 	
 	
 	// the constructor
-	public ApproachingCurrentPosition(SpacewarObject a, SpacewarObject b, int steps) {
+	public ShipApproachingAsteroid(Ship a, Asteroid b, int steps) {
 		super(a, b);
 		this.steps = steps;
 	}
 	
 }
+
+
+//Relation: A is approaching the current position of B
+class shipApproachingBase extends Relation{
+
+	// make the relation if a will approximately reach B's location in some number of steps
+	public static shipApproachingBase make(Ship a, Base b, Toroidal2DPhysics space){
+
+		// set constants
+		int radius = 20;
+		int steps = 30;
+		int resolution = 3;
+
+		// get velocity vector and position for A
+		Vector2D v = a.getPosition().getTranslationalVelocity();
+		Position futurePosition = a.getPosition().deepCopy();
+
+		// see if A will arrive at current position of B within given number  of frames
+		int i = 0;
+		while(i < steps){
+			// return relation if approximate collision found at this step
+			if(space.findShortestDistance(b.getPosition(), futurePosition) < radius){
+				shipApproachingBase r = new shipApproachingBase(a,b,i);
+				return r;
+			}
+			
+			
+			// increment step and future position
+			futurePosition.setX(futurePosition.getX() + (v.getXValue() * resolution));
+			futurePosition.setY(futurePosition.getY() + (v.getYValue() * resolution));
+			i += resolution;
+			
+		}
+
+		return null ;
+	}
+
+	// the number of steps before B occupies the approximate current position of A
+	protected int steps;
+	public int steps(){
+		return steps;
+	}
+	public void steps(int steps){
+		this.steps = steps;
+	}
+	
+	
+	// the constructor
+	public shipApproachingBase(Ship a, Base b, int steps) {
+		super(a, b);
+		this.steps = steps;
+	}
+	
+}
+
 
 public class KnowledgeGraph{
 
@@ -112,21 +162,40 @@ public class KnowledgeGraph{
 		
 		vertices.addAll(space.getAsteroids());
 		vertices.addAll(space.getShips());
-		vertices.addAll(space.getWeapons());
+		vertices.addAll(space.getBases());
+		
 		
 		
 		for(SpacewarObject a : vertices){
 			for(SpacewarObject b : vertices){
 				
-				// Add relations for Ships and asteroids approaching eachother 
-				if( !a.equals(b) && ( (a.getClass().isAssignableFrom(Bullet.class) && b.getClass().isAssignableFrom(Ship.class) ) || (a.getClass().isAssignableFrom(Ship.class) && b.getClass().isAssignableFrom(Asteroid.class)))){
-					// add relations between asteroids and ships where one is headed towards
-					// the other one's current position
-					Relation r = ApproachingCurrentPosition.make(a, b, space);
+				// Ships approaching bases
+				if(a.getClass().isAssignableFrom(Ship.class) && b.getClass().isAssignableFrom(Base.class) ){
+					Relation r = shipApproachingBase.make((Ship) a, (Base) b, space);
 					if(r != null ){
 						edges.add(r);
-					}
+					}		
 				}
+				
+				// Ships approaching asteroids
+				if(a.getClass().isAssignableFrom(Ship.class) && b.getClass().isAssignableFrom(Asteroid.class) ){
+					Relation r = ShipApproachingAsteroid.make((Ship) a, (Asteroid) b, space);
+					if(r != null ){
+						edges.add(r);
+					}		
+				}				
+				
+				
+				
+				// Add relations for Ships and asteroids approaching eachother 
+				//if( !a.equals(b) && ( (a.getClass().isAssignableFrom(Bullet.class) && b.getClass().isAssignableFrom(Ship.class) ) || (a.getClass().isAssignableFrom(Ship.class) && b.getClass().isAssignableFrom(Asteroid.class)))){
+				//	// add relations between asteroids and ships where one is headed towards
+				//	// the other one's current position
+				//	Relation r = ApproachingCurrentPosition.make(a, b, space);
+				//	if(r != null ){
+				//		edges.add(r);
+				//	}
+				//}
 				
 				
 			}
