@@ -100,6 +100,9 @@ public class Project2Client extends TeamClient
 	private HashMap<UUID, Boolean> can_buy_base;
 	private HashMap<UUID, Boolean> buy_a_base;
 	
+	//should we shoot?
+	private HashMap<UUID, Boolean> shoot;
+	
 	@Override
 	public void initialize()
 	{
@@ -112,6 +115,8 @@ public class Project2Client extends TeamClient
 		
 		can_buy_base = new HashMap<UUID, Boolean>();
 		buy_a_base = new HashMap<UUID, Boolean>();
+		
+		shoot = new HashMap<UUID, Boolean>();
 		
 		random = new Random();
 	}
@@ -142,6 +147,7 @@ public class Project2Client extends TeamClient
 			if (actionable instanceof Ship)
 			{
 				Ship ship = (Ship) actionable;
+				shoot.put(ship.getId(), false);
 				SpacewarAction current = ship.getCurrentAction();
 				
 				// work on iterations
@@ -357,7 +363,7 @@ public class Project2Client extends TeamClient
 		}
 		
 		for(Asteroid as: my_asteroids){
-			this.my_shadow_manager.put("my_collision" + ship.getId(), new ColorLineShadow(ship.getPosition(), as.getPosition(), Color.cyan));
+			this.my_shadow_manager.put(ship.getId() + "my_collision", new ColorLineShadow(ship.getPosition(), as.getPosition(), Color.cyan));
 		}
 		
 		for (Ship other_ship : space.getShips())
@@ -373,7 +379,7 @@ public class Project2Client extends TeamClient
 				// matching ids
 				for (Asteroid my_collision : my_asteroids)
 					for (Asteroid other_collision : other_asteroids)
-						if (other_collision.getId().equals(my_collision.getClass()))
+						if (other_collision.getId().equals(my_collision.getId()))
 						{
 							
 							System.out.println("we are headed to the same place... HELL!");
@@ -387,11 +393,13 @@ public class Project2Client extends TeamClient
 							{
 								my_color = Color.RED;
 								their_color = Color.GREEN;
+								
+								shoot.put(ship.getId(), true);
 							}
 							
 							// draw the impending doom
 							this.my_shadow_manager.put(ship.getId() + "my_collision", new ColorLineShadow(ship.getPosition(), other_collision.getPosition(), my_color));
-							this.my_shadow_manager.put(other_ship.getId() + "their_collision", new ColorLineShadow(other_ship.getPosition(), other_collision.getPosition(), my_color));
+							this.my_shadow_manager.put(other_ship.getId() + "their_collision", new ColorLineShadow(other_ship.getPosition(), other_collision.getPosition(), their_color));
 						}
 			}
 		}
@@ -1036,8 +1044,14 @@ public class Project2Client extends TeamClient
 	@Override
 	public Map<UUID, SpacewarPowerup> getPowerups(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		HashMap<UUID, SpacewarPowerup> powerupMap = new HashMap<UUID, SpacewarPowerup>();
+		
+		for(Ship ship: space.getShips())
+		{	
+			if(!this.shoot.containsKey(ship.getId()))
+				powerupMap.put(ship.getId(), ship.getNewBullet());
+		}
+		return powerupMap;
 	}
 	
 	@Override
