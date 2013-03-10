@@ -140,11 +140,8 @@ public class Project2Client extends TeamClient
 
 		// new stuff
 		KnowledgeGraph kg = new KnowledgeGraph(space,my_shadow_manager);
-		ArrayList<Relation> relations = kg.edges;
-		for(Relation r : relations){
-			my_shadow_manager.put(r.A().getId().toString() + " to " + r.B().getId().toString()  , new LineShadow(r.B().getPosition(), r.A().getPosition(), new Vector2D(r.A().getPosition().getX() - r.B().getPosition().getX(), r.A().getPosition().getY() - r.B().getPosition().getY())));
-			//my_shadow_manager.put(r.B().getId().toString(), new CircleShadow(2, new Color(0,0,255), r.B().getPosition()));
-		}
+
+		
 		
 		for (SpacewarObject actionable : actionableObjects)
 			if (actionable instanceof Ship)
@@ -152,6 +149,12 @@ public class Project2Client extends TeamClient
 				Ship ship = (Ship) actionable;
 				SpacewarAction current = ship.getCurrentAction();
 
+				// relations from ship
+				ArrayList<Relation> relations = kg.getRelationsFrom(ship);
+				for(Relation r : relations){
+					my_shadow_manager.put(r.A().getId().toString() + " to " + r.B().getId().toString()  , new LineShadow(r.B().getPosition(), r.A().getPosition(), new Vector2D(r.A().getPosition().getX() - r.B().getPosition().getX(), r.A().getPosition().getY() - r.B().getPosition().getY())));
+					//my_shadow_manager.put(r.B().getId().toString(), new CircleShadow(2, new Color(0,0,255), r.B().getPosition()));
+				}
 
 				// work on iterations
 				if (current_iterations.get(ship) == null)

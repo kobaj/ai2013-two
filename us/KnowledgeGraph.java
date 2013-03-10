@@ -163,6 +163,7 @@ public class KnowledgeGraph{
 		vertices.addAll(space.getAsteroids());
 		vertices.addAll(space.getShips());
 		vertices.addAll(space.getBases());
+		vertices.addAll(space.getWeapons());
 		
 		
 		
@@ -183,8 +184,15 @@ public class KnowledgeGraph{
 					if(r != null ){
 						edges.add(r);
 					}		
-				}				
+				}
 				
+				// Bullets approaching ships
+				//if(a.getClass().isAssignableFrom(Bullet.class) && b.getClass().isAssignableFrom(Ship.class) ){
+				//	Relation r = BulletApproachingShip.make((Bullet) a, (Ship) b, space);
+				//	if(r != null ){
+				//		edges.add(r);
+				//	}		
+				//}			
 				
 				
 				// Add relations for Ships and asteroids approaching eachother 
@@ -223,13 +231,17 @@ public class KnowledgeGraph{
 		ArrayList<Relation> result = new ArrayList<Relation>();
 		
 		for(Relation e : edges){
-			if(e.A().equals(a) && e.getClass() == c){
+			if(e.A().equals(a) && c.isAssignableFrom(e.getClass())){
 				result.add(e);
 			}
 		}
 		
 		return result;
 	}
+	public ArrayList<Relation> getRelationsFrom(SpacewarObject a){
+		return getRelationsFrom(a,Object.class);
+	}
+
 	
 	// get the list of relations starting from a particular object
 	public ArrayList<Relation> getRelationsTo(SpacewarObject b, Class c){
@@ -237,12 +249,15 @@ public class KnowledgeGraph{
 		ArrayList<Relation> result = new ArrayList<Relation>();
 		
 		for(Relation e : edges){
-			if(e.B().equals(b) && e.getClass() == c){
+			if(e.B().equals(b) && c.isAssignableFrom(e.getClass())){
 				result.add(e);
 			}
 		}
 		
 		return result;
+	}
+	public ArrayList<Relation> getRelationsTo(SpacewarObject b){
+		return getRelationsFrom(b,Object.class);
 	}
 	
 	
