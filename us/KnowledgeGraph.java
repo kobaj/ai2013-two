@@ -53,8 +53,8 @@ class ApproachingCurrentPosition extends Relation{
 	public static ApproachingCurrentPosition make(SpacewarObject a, SpacewarObject b, Toroidal2DPhysics space){
 
 		// set constants
-		int radius = 10;
-		int steps = 15;
+		int radius = 20;
+		int steps = 30;
 		int resolution = 3;
 
 		// get velocity vector and position for A
@@ -134,13 +134,13 @@ public class KnowledgeGraph{
 		
 	}
 	
-	// get the list of directed relations between two SpacewarObjects
-	public ArrayList<Relation> getRelations(SpacewarObject a,SpacewarObject b){
+	// get the list of directed relations between two SpacewarObjects of a particular type
+	public ArrayList<Relation> getRelations(SpacewarObject a,SpacewarObject b, Class c ){
 		
 		ArrayList<Relation> result = new ArrayList<Relation>();
 		
 		for(Relation e : edges){
-			if(e.A().equals(a) && e.B().equals(b)){
+			if(e.A().equals(a) && e.B().equals(b) && e.getClass() == c){
 				result.add(e);
 			}
 		}
