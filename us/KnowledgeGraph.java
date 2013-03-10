@@ -96,10 +96,71 @@ class ShipApproachingAsteroid extends Relation{
 
 
 //Relation: A is approaching the current position of B
-class shipApproachingBase extends Relation{
+class FutileChase extends Relation{
 
 	// make the relation if a will approximately reach B's location in some number of steps
-	public static shipApproachingBase make(Ship a, Base b, Toroidal2DPhysics space){
+	public static FutileChase make( Ship a, Asteroid b, Toroidal2DPhysics space){
+
+		// check to see if the ship is getting closer to the asteroid's current position
+		// but further from the asteroid's future position
+		
+		// set constants
+		int minIncrease = 1;	// minimum increase in distance to future position of asteroid to register
+		int minDecrease = 5;	// minimum decrease in distance to current position to register
+		int minRadius = 300;		// minimum distance from asteroid to even bother checking
+
+		// get current radius
+		double currentRadius = space.findShortestDistance(a.getPosition(), b.getPosition());
+		
+		// check radius
+		if(currentRadius > minRadius){
+			return null ;
+		}
+		
+		// get velocity vector and position for A
+		Vector2D vA = a.getPosition().getTranslationalVelocity();
+		Position futurePositionA = a.getPosition().deepCopy();
+		futurePositionA.setX(futurePositionA.getX() + vA.getXValue());
+		futurePositionA.setY(futurePositionA.getY() + vA.getYValue());
+
+		
+		// get velocity vector and position for B
+		Vector2D vB = b.getPosition().getTranslationalVelocity();
+		Position futurePositionB = b.getPosition().deepCopy();
+		futurePositionB.setX(futurePositionB.getX() + vB.getXValue());
+		futurePositionB.setY(futurePositionB.getY() + vB.getYValue());
+		
+		// check for min decrease to current position of asteroid
+		double futureShipToCurrentAsteroidRadius = space.findShortestDistance(futurePositionA, b.getPosition());
+		if(futureShipToCurrentAsteroidRadius  + minDecrease > currentRadius){
+			return null;
+		}
+		
+		// check for min increase to current position of asteroid
+		double futureShipToFutureAsteroidRadius = space.findShortestDistance(futurePositionA, futurePositionB);
+		if(futureShipToFutureAsteroidRadius - minIncrease < currentRadius){
+			return null;
+		}
+		
+
+		return new FutileChase(a,b) ;
+	}
+	
+	
+	// the constructor
+	public FutileChase(Ship a, Asteroid b) {
+		super(a, b);
+	}
+	
+}
+
+
+
+//Relation: A is approaching the current position of B
+class ShipApproachingBase extends Relation{
+
+	// make the relation if a will approximately reach B's location in some number of steps
+	public static ShipApproachingBase make(Ship a, Base b, Toroidal2DPhysics space){
 
 		// set constants
 		int radius = 20;
@@ -115,7 +176,7 @@ class shipApproachingBase extends Relation{
 		while(i < steps){
 			// return relation if approximate collision found at this step
 			if(space.findShortestDistance(b.getPosition(), futurePosition) < radius){
-				shipApproachingBase r = new shipApproachingBase(a,b,i);
+				ShipApproachingBase r = new ShipApproachingBase(a,b,i);
 				return r;
 			}
 			
@@ -141,12 +202,66 @@ class shipApproachingBase extends Relation{
 	
 	
 	// the constructor
-	public shipApproachingBase(Ship a, Base b, int steps) {
+	public ShipApproachingBase(Ship a, Base b, int steps) {
 		super(a, b);
 		this.steps = steps;
 	}
 	
 }
+
+//Relation: A is approaching the current position of B
+class BulletApproachingShip extends Relation{
+
+	// make the relation if a will approximately reach B's location in some number of steps
+	public static BulletApproachingShip make(Bullet a, Ship b, Toroidal2DPhysics space){
+
+		// set constants
+		int radius = 100;
+		int steps = 60;
+		int resolution = 5;
+
+		// get velocity vector and position for A
+		Vector2D v = a.getPosition().getTranslationalVelocity();
+		Position futurePosition = a.getPosition().deepCopy();
+
+		// see if A will arrive at current position of B within given number  of frames
+		int i = 0;
+		while(i < steps){
+			// return relation if approximate collision found at this step
+			if(space.findShortestDistance(b.getPosition(), futurePosition) < radius){
+				BulletApproachingShip r = new BulletApproachingShip(a,b,i);
+				return r;
+			}
+			
+			
+			// increment step and future position
+			futurePosition.setX(futurePosition.getX() + (v.getXValue() * resolution));
+			futurePosition.setY(futurePosition.getY() + (v.getYValue() * resolution));
+			i += resolution;
+			
+		}
+
+		return null ;
+	}
+
+	// the number of steps before B occupies the approximate current position of A
+	protected int steps;
+	public int steps(){
+		return steps;
+	}
+	public void steps(int steps){
+		this.steps = steps;
+	}
+	
+	
+	// the constructor
+	public BulletApproachingShip(Bullet a, Ship b, int steps) {
+		super(a, b);
+		this.steps = steps;
+	}
+	
+}
+
 
 
 public class KnowledgeGraph{
@@ -172,7 +287,7 @@ public class KnowledgeGraph{
 				
 				// Ships approaching bases
 				if(a.getClass().isAssignableFrom(Ship.class) && b.getClass().isAssignableFrom(Base.class) ){
-					Relation r = shipApproachingBase.make((Ship) a, (Base) b, space);
+					Relation r = ShipApproachingBase.make((Ship) a, (Base) b, space);
 					if(r != null ){
 						edges.add(r);
 					}		
@@ -185,25 +300,24 @@ public class KnowledgeGraph{
 						edges.add(r);
 					}		
 				}
+
+				// Ships futily chasing asteroids (they should speed up)
+				if(a.getClass().isAssignableFrom(Ship.class) && b.getClass().isAssignableFrom(Asteroid.class) ){
+					Relation r = FutileChase.make((Ship) a, (Asteroid) b, space);
+					if(r != null ){
+						edges.add(r);
+					}		
+				}
+				
 				
 				// Bullets approaching ships
-				//if(a.getClass().isAssignableFrom(Bullet.class) && b.getClass().isAssignableFrom(Ship.class) ){
-				//	Relation r = BulletApproachingShip.make((Bullet) a, (Ship) b, space);
-				//	if(r != null ){
-				//		edges.add(r);
-				//	}		
-				//}			
-				
-				
-				// Add relations for Ships and asteroids approaching eachother 
-				//if( !a.equals(b) && ( (a.getClass().isAssignableFrom(Bullet.class) && b.getClass().isAssignableFrom(Ship.class) ) || (a.getClass().isAssignableFrom(Ship.class) && b.getClass().isAssignableFrom(Asteroid.class)))){
-				//	// add relations between asteroids and ships where one is headed towards
-				//	// the other one's current position
-				//	Relation r = ApproachingCurrentPosition.make(a, b, space);
-				//	if(r != null ){
-				//		edges.add(r);
-				//	}
-				//}
+				if(a.getClass().isAssignableFrom(Bullet.class) && b.getClass().isAssignableFrom(Ship.class) ){
+					Relation r = BulletApproachingShip.make((Bullet) a, (Ship) b, space);
+					if(r != null ){
+						edges.add(r);
+					}		
+				}			
+		
 				
 				
 			}
@@ -257,7 +371,7 @@ public class KnowledgeGraph{
 		return result;
 	}
 	public ArrayList<Relation> getRelationsTo(SpacewarObject b){
-		return getRelationsFrom(b,Object.class);
+		return getRelationsTo(b,Object.class);
 	}
 	
 	
