@@ -72,7 +72,7 @@ public class Project2Client extends TeamClient
 	final public static double magnitude_vector = 2500.0;
 	
 	// how many loops should we go through before recalculating astar and nodes
-	final public static int MAX_ITERATIONS = 40;
+	final public static int MAX_ITERATIONS = 60;
 	HashMap<Ship, Integer> current_iterations;
 	
 	// screen resolution
@@ -142,14 +142,15 @@ public class Project2Client extends TeamClient
 		KnowledgeGraph kg = new KnowledgeGraph(space,my_shadow_manager);
 		ArrayList<Relation> relations = kg.edges;
 		for(Relation r : relations){
-			//my_shadow_manager.put(r.A().getId().toString() + " to " + r.B().getId().toString()  , new LineShadow(r.B().getPosition(), r.A().getPosition(), new Vector2D(r.A().getPosition().getX() - r.B().getPosition().getX(), r.A().getPosition().getY() - r.B().getPosition().getY())));
+			my_shadow_manager.put(r.A().getId().toString() + " to " + r.B().getId().toString()  , new LineShadow(r.B().getPosition(), r.A().getPosition(), new Vector2D(r.A().getPosition().getX() - r.B().getPosition().getX(), r.A().getPosition().getY() - r.B().getPosition().getY())));
 			//my_shadow_manager.put(r.B().getId().toString(), new CircleShadow(2, new Color(0,0,255), r.B().getPosition()));
 		}
+
+		SpacewarObject goal = null;
 		
 		for (SpacewarObject actionable : actionableObjects)
 			if (actionable instanceof Ship)
 			{
-				
 				Ship ship = (Ship) actionable;
 				SpacewarAction current = ship.getCurrentAction();
 
@@ -194,8 +195,26 @@ public class Project2Client extends TeamClient
 						goal_exists = false;
 					}
 				
+				boolean enemy_closer = false;
+				if(goal != null){
+					ArrayList<Relation> othersApproachingGoal = kg.getRelationsTo(goal, ApproachingCurrentPosition.class);
+					ArrayList<Relation> usApproaching = kg.getRelations(ship, goal, ApproachingCurrentPosition.class) ;
+					for(Relation o : othersApproachingGoal){
+						if(!o.A().equals(ship)){
+							System.out.println("checking enemy distance to goal");
+							if(usApproaching.size() == 0){
+								enemy_closer = true;
+								System.out.println("enemy close to goal, giving up");
+							}else if(((ApproachingCurrentPosition) usApproaching.get(0)).steps() > ((ApproachingCurrentPosition) o).steps()){
+								enemy_closer = true ;
+								System.out.println("enemy close to goal, giving up");
+							}
+						}
+					}
+				}
+				
 				// get next ship action
-				if (current == null || current.isMovementFinished(space) || current_iterations.get(ship) <= 0 || !goal_exists)
+				if (current == null || current.isMovementFinished(space) || current_iterations.get(ship) <= 0 || !goal_exists || enemy_closer)
 				{
 					current_iterations.put(ship, MAX_ITERATIONS);
 					
@@ -206,7 +225,7 @@ public class Project2Client extends TeamClient
 					
 					// list of forbidden goals
 					ArrayList<SpacewarObject> out_goal = new ArrayList<SpacewarObject>();
-					SpacewarObject goal = null;
+					goal = null;
 					
 					int e = 1;
 					int i = 1;
@@ -307,7 +326,7 @@ public class Project2Client extends TeamClient
 						System.out.println("Final Approach - Increasing multiplier");
 						my_shadow_manager.put(ship.getId().toString() + " to " + goal.getId().toString()  , new LineShadow(goal.getPosition(), ship.getPosition(), new Vector2D(ship.getPosition().getX() - goal.getPosition().getX(), ship.getPosition().getY() - goal.getPosition().getY())));
 
-						jakobs_magic_multiplier *= 10;
+						jakobs_magic_multiplier *= 5;
 						
 					}
 					

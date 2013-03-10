@@ -148,18 +148,34 @@ public class KnowledgeGraph{
 		return result;
 	}
 	
-	// get the list of relations starting from a particular object
-	public ArrayList<Relation> getRelations(SpacewarObject a){
+	// get the list of relations of a particular type starting from a particular object
+	public ArrayList<Relation> getRelationsFrom(SpacewarObject a, Class c){
 		
 		ArrayList<Relation> result = new ArrayList<Relation>();
 		
 		for(Relation e : edges){
-			if(e.A().equals(a)){
+			if(e.A().equals(a) && e.getClass() == c){
 				result.add(e);
 			}
 		}
 		
 		return result;
 	}
+	
+	// get the list of relations starting from a particular object
+	public ArrayList<Relation> getRelationsTo(SpacewarObject b, Class c){
+		
+		ArrayList<Relation> result = new ArrayList<Relation>();
+		
+		for(Relation e : edges){
+			if(e.B().equals(b) && e.getClass() == c){
+				result.add(e);
+			}
+		}
+		
+		return result;
+	}
+	
+	
 	
 }
