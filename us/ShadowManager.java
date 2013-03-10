@@ -26,7 +26,7 @@ public class ShadowManager
 	
 	private Random random;
 	
-	private boolean keep = false;
+	private boolean draw = false;
 	
 	/**
 	 * Setup the shadow manager
@@ -39,17 +39,6 @@ public class ShadowManager
 		random = new Random();
 	}
 	
-	/**
-	 * Add a shadow to the manager without an ID association.
-	 * 
-	 * @param shadow
-	 *            The shadow to be added.
-	 */
-	public void put(Shadow shadow)
-	{
-		String randomid = String.valueOf(random.nextLong());
-		put(randomid, shadow);
-	}
 	
 	/**
 	 * Add a shadow to the manager with an ID association.
@@ -61,6 +50,9 @@ public class ShadowManager
 	 */
 	public void put(String id, Shadow shadow)
 	{
+		if(!draw)
+			return;
+		
 		ArrayList<Shadow> shadows = new ArrayList<Shadow>();
 		shadows.add(shadow);
 		put(id, shadows);
@@ -76,6 +68,9 @@ public class ShadowManager
 	 */
 	public void put(String id, ArrayList<Shadow> shadows)
 	{
+		if(!draw)
+			return;
+		
 		managedShadows.put(id, shadows);
 	}
 	
@@ -98,9 +93,6 @@ public class ShadowManager
 			for (Shadow s : shadows)
 				newShadows.add(s);
 		}
-		
-		if(!keep)
-			managedShadows.clear();
 	}
 	
 	/**
