@@ -346,8 +346,19 @@ public class Project2Client extends TeamClient
 		// first lets find out if the enemy and our ship are going towards the same goal
 		ArrayList<Asteroid> my_asteroids = get_impending_asteroid_collision_uuids(kg, ship);
 		
-		for(Asteroid as: my_asteroids)
+		// see if I can get it to work
+		ArrayList<Relation> a = kg.getRelationsFrom(ship, ShipApproachingAsteroid.class);
+		if(a.size() > 0){
+			ArrayList<Relation> b = kg.getRelationsTo(a.get(0).B(), ShipApproachingAsteroid.class );
+			System.out.println(b.size() - 1 + " Other ships headed towards my asteroid");
+			
+		}else{
+			System.out.println("Still A*ing");			
+		}
+		
+		for(Asteroid as: my_asteroids){
 			this.my_shadow_manager.put("my_collision" + ship.getId(), new ColorLineShadow(ship.getPosition(), as.getPosition(), Color.cyan));
+		}
 		
 		for (Ship other_ship : space.getShips())
 		{
@@ -364,6 +375,8 @@ public class Project2Client extends TeamClient
 					for (Asteroid other_collision : other_asteroids)
 						if (other_collision.getId().equals(my_collision.getClass()))
 						{
+							
+							System.out.println("we are headed to the same place... HELL!");
 							double my_distance = space.findShortestDistance(ship.getPosition(), other_collision.getPosition());
 							double their_distance = space.findShortestDistance(other_ship.getPosition(), other_collision.getPosition());
 							
