@@ -19,6 +19,7 @@ import spacewar2.clients.TeamClient;
 import spacewar2.objects.Asteroid;
 import spacewar2.objects.Base;
 import spacewar2.objects.Beacon;
+import spacewar2.objects.Bullet;
 import spacewar2.objects.Ship;
 import spacewar2.objects.SpacewarActionableObject;
 import spacewar2.objects.SpacewarObject;
@@ -403,14 +404,7 @@ public class Project2Client extends TeamClient
 						}
 			}
 		}
-		
-		/*
-		 * boolean enemy_closer = false; if(goal != null){ ArrayList<Relation> othersApproachingGoal = kg.getRelationsTo(goal, ApproachingCurrentPosition.class); ArrayList<Relation> usApproaching =
-		 * kg.getRelations(ship, goal, ApproachingCurrentPosition.class) ; for(Relation o : othersApproachingGoal){ if(!o.A().equals(ship)){ System.out.println("checking enemy distance to goal");
-		 * if(usApproaching.size() == 0){ enemy_closer = true; System.out.println("enemy close to goal, giving up"); }else if(((ApproachingCurrentPosition) usApproaching.get(0)).steps() >
-		 * ((ApproachingCurrentPosition) o).steps()){ enemy_closer = true ; System.out.println("enemy close to goal, giving up"); } } } }
-		 */
-		
+	
 		return newAction;
 	}
 	
@@ -1048,8 +1042,10 @@ public class Project2Client extends TeamClient
 		
 		for(Ship ship: space.getShips())
 		{	
+			Bullet.BULLET_COST =  -5000;
+			Bullet.BULLET_RADIUS = 0;
 			if(!this.shoot.containsKey(ship.getId()))
-				powerupMap.put(ship.getId(), ship.getNewBullet());
+				powerupMap.put(ship.getId(), new Bullet(ship.getPosition().deepCopy(), ship));
 		}
 		return powerupMap;
 	}
