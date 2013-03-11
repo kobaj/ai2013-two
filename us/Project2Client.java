@@ -1039,13 +1039,13 @@ public class Project2Client extends TeamClient
 	public Map<UUID, SpacewarPowerup> getPowerups(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
 	{
 		HashMap<UUID, SpacewarPowerup> powerupMap = new HashMap<UUID, SpacewarPowerup>();
-		
 		for(Ship ship: space.getShips())
 		{	
-			Bullet.BULLET_COST =  -5000;
-			Bullet.BULLET_RADIUS = 0;
-			if(!this.shoot.containsKey(ship.getId()))
-				powerupMap.put(ship.getId(), new Bullet(ship.getPosition().deepCopy(), ship));
+			if(this.shoot.containsKey(ship.getId()) && shoot.get(ship.getId()))
+			{
+				powerupMap.put(ship.getId(), ship.getNewBullet());
+				shoot.put(ship.getId(), false);
+			}
 		}
 		return powerupMap;
 	}
