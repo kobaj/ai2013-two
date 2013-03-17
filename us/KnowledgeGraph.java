@@ -49,7 +49,7 @@ class ShipApproachingAsteroid extends Relation{
 
 		// set constants
 		int radius = 20;
-		int steps = 30;
+		int steps = 300;
 		int resolution = 3;
 
 		// get velocity vector and position for A
@@ -210,10 +210,10 @@ class ShipApproachingBase extends Relation{
 }
 
 //Relation: A is approaching the current position of B
-class BulletApproachingShip extends Relation{
+class MissileApproachingShip extends Relation{
 
 	// make the relation if a will approximately reach B's location in some number of steps
-	public static BulletApproachingShip make(Bullet a, Ship b, Toroidal2DPhysics space){
+	public static MissileApproachingShip make(Missile a, Ship b, Toroidal2DPhysics space){
 
 		// set constants
 		int radius = 100;
@@ -229,7 +229,7 @@ class BulletApproachingShip extends Relation{
 		while(i < steps){
 			// return relation if approximate collision found at this step
 			if(space.findShortestDistance(b.getPosition(), futurePosition) < radius){
-				BulletApproachingShip r = new BulletApproachingShip(a,b,i);
+				MissileApproachingShip r = new MissileApproachingShip(a,b,i);
 				return r;
 			}
 			
@@ -255,7 +255,7 @@ class BulletApproachingShip extends Relation{
 	
 	
 	// the constructor
-	public BulletApproachingShip(Bullet a, Ship b, int steps) {
+	public MissileApproachingShip(Missile a, Ship b, int steps) {
 		super(a, b);
 		this.steps = steps;
 	}
@@ -270,7 +270,7 @@ public class KnowledgeGraph{
 	protected ArrayList<SpacewarObject> vertices;
 	protected ArrayList<Relation> edges;
 	
-	public KnowledgeGraph(Toroidal2DPhysics space, ShadowManager shadow_manager){
+	public KnowledgeGraph(Toroidal2DPhysics space){
 		
 		edges = new ArrayList<Relation>();
 		vertices = new ArrayList<SpacewarObject>();
@@ -310,9 +310,9 @@ public class KnowledgeGraph{
 				}
 				
 				
-				// Bullets approaching ships
-				if(a.getClass().isAssignableFrom(Bullet.class) && b.getClass().isAssignableFrom(Ship.class) ){
-					Relation r = BulletApproachingShip.make((Bullet) a, (Ship) b, space);
+				// Missiles approaching ships
+				if(a.getClass().isAssignableFrom(Missile.class) && b.getClass().isAssignableFrom(Ship.class) ){
+					Relation r = MissileApproachingShip.make((Missile) a, (Ship) b, space);
 					if(r != null ){
 						edges.add(r);
 					}		
