@@ -262,6 +262,46 @@ class MissileApproachingShip extends Relation{
 	
 }
 
+class ApproxTravelEnergy extends Relation{
+
+	public ApproxTravelEnergy(Ship a, SpacewarObject b) {
+		super(a, b);
+		
+	}
+	public ApproxTravelEnergy(Ship a, SpacewarObject b, Toroidal2DPhysics space){
+		super(a,b);
+		
+		int accel = 5;// acceleration cost constant
+		int travel = 1;// A* travel cost constant
+		
+		// Determine how much energy it will take to change direction
+		Vector2D vel = a.getPosition().getTranslationalVelocity();
+		Vector2D vel_unit = vel.unit();
+		Vector2D distance = space.findShortestDistanceVector(a.getPosition(), b.getPosition());
+		Vector2D distance_unit = distance.unit();
+		Vector2D deltaV = new Vector2D(distance_unit.getXValue() - vel_unit.getXValue(),distance_unit.getYValue() - vel_unit.getYValue());
+		deltaV = deltaV.multiply(accel);
+		
+		
+		// Use Euclidian distance times a constant to estimate cost of A* travel
+		double e = distance.getMagnitude();
+		e *= travel;
+		
+		amount(deltaV.getMagnitude() + e);
+	}
+	
+	protected double amount;
+	public double amount(){
+		return amount;
+	}
+	protected void amount(double amount){
+		this.amount = amount ;
+	}
+
+	
+	
+}
+
 
 
 public class KnowledgeGraph{
@@ -316,8 +356,13 @@ public class KnowledgeGraph{
 					if(r != null ){
 						edges.add(r);
 					}		
-				}			
-		
+				}		
+				
+				// Energy cost to travel from ship's position to object
+				if(a.getClass().isAssignableFrom(Ship.class) && !b.getClass().isAssignableFrom(Ship.class)){
+					Relation r = new ApproxTravelEnergy( (Ship) a, b, space);
+					edges.add(r);
+				}
 				
 				
 			}

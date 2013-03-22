@@ -316,6 +316,10 @@ public class Project3Client extends TeamClient
 					// new stuff
 					KnowledgeGraph kg = new KnowledgeGraph(space);
 					newAction = goalHueristic(local_space, ship, kg, newAction);
+
+					for(Relation r : kg.getRelations(ship, goal, ApproxTravelEnergy.class)){
+						System.out.println(((ApproxTravelEnergy) r ).amount() + " estimated enrety to goal , current energy:" + ship.getEnergy()  );
+					}
 					
 					// finally
 					actions.put(ship.getId(), newAction);
