@@ -30,6 +30,7 @@ import spacewar2.shadows.Shadow;
 import spacewar2.simulator.Toroidal2DPhysics;
 import spacewar2.utilities.Position;
 import spacewar2.utilities.Vector2D;
+import grif1252.State;
 
 public class Project3Client extends TeamClient
 {
@@ -198,6 +199,14 @@ public class Project3Client extends TeamClient
 					if (global_output)
 						System.out.println("Going to get an action");
 					
+					State st = new State(ship, space);
+					System.out.println(st);
+
+					Set<Ship> sh = space.getShips();
+					State st2 = new State(st,"mineAsteroid",getClosestAsteroid(space,ship));
+					System.out.println(st2);
+					System.exit(0);
+					
 					current_iterations.put(ship, MAX_ITERATIONS);
 					
 					Toroidal2DPhysics sub_local_space = local_space.deepClone();
@@ -213,6 +222,7 @@ public class Project3Client extends TeamClient
 					int i = 1;
 					boolean breakout = false;
 					
+					
 					while (true)
 					{
 						
@@ -222,6 +232,8 @@ public class Project3Client extends TeamClient
 						ArrayList<Node> outer_nodes = new ArrayList<Node>(); // all nodes
 						
 						goal = addStartAndGoal(sub_local_space, ship, outer_nodes, global_output, out_goal);
+						
+
 						
 						if (goal == null)
 							break;
@@ -317,9 +329,7 @@ public class Project3Client extends TeamClient
 					KnowledgeGraph kg = new KnowledgeGraph(space);
 					newAction = goalHueristic(local_space, ship, kg, newAction);
 
-					for(Relation r : kg.getRelations(ship, goal, ApproxTravelEnergy.class)){
-						System.out.println(((ApproxTravelEnergy) r ).amount() + " estimated enrety to goal , current energy:" + ship.getEnergy()  );
-					}
+					
 					
 					// finally
 					actions.put(ship.getId(), newAction);
@@ -361,6 +371,8 @@ public class Project3Client extends TeamClient
 	
 	private SpacewarAction goalHueristic(Toroidal2DPhysics space, Ship ship, KnowledgeGraph kg, SpacewarAction newAction)
 	{
+		
+				
 		// first lets find out if the enemy and our ship are going towards the same goal
 		ArrayList<Asteroid> my_asteroids = get_impending_asteroid_collision_uuids(kg, ship);
 		
