@@ -105,6 +105,9 @@ public class Project3Client extends TeamClient
 	// PROJECT 3 VARIABLES
 	private HashMap<UUID, LinkedList<State>> object_plans;
 	
+	private final int energycutoff = 600;
+	private final int moneycutoff = 600;
+	
 	@Override
 	public void initialize()
 	{
@@ -176,12 +179,25 @@ public class Project3Client extends TeamClient
 						State sub_previous = next;
 						for (int i = 1; i <= 10; i++)
 						{
-							if (sub_previous.closest_mineable_asteroid == null)
-								break;
+							State sub_next = null;
 							
-							State sub_next = new State(sub_previous, possibleTasks.mineAsteroid, sub_previous.closest_mineable_asteroid);
-							ship_plan.addLast(sub_next);
-							sub_previous = sub_next;
+							if (sub_previous.closest_mineable_asteroid == null || sub_previous.energy < this.energycutoff || sub_previous.money > this.moneycutoff || i % 5 == 0)
+							{
+								if (sub_previous.action == possibleTasks.moveToPosition)
+									break;
+								
+								sub_next = new State(sub_previous, possibleTasks.moveToPosition, this.getClosestBase(space, sub_previous.position).getPosition());
+							}
+							else
+							{
+								sub_next = new State(sub_previous, possibleTasks.mineAsteroid, sub_previous.closest_mineable_asteroid);
+							}
+							
+							if (sub_next != null)
+							{
+								ship_plan.addLast(sub_next);
+								sub_previous = sub_next;
+							}
 						}
 						
 						// and push it to our storage
@@ -226,21 +242,19 @@ public class Project3Client extends TeamClient
 					{
 						// calcualate astar
 						ArrayList<Position> subgoals = this.independentAStar(local_space, ship.getPosition(), next_action.position, ship.getRadius());
-
+						
 						Position original_goal = subgoals.get(1);
 						
 						// extend the goal for higher velocity
 						Vector2D v = space.findShortestDistanceVector(ship.getPosition(), original_goal);
 						Vector2D distance_unit = v.getUnitVector();
-
-						ArrayList<Shadow> goal_shadow = new ArrayList<Shadow>();
-						SpacewarAction newAction;
-
-						double jakobs_magic_multiplier = magnitude_vector / v.getMagnitude();
-
-						Position extended_goal = new Position(original_goal.getX() + distance_unit.getXValue() * jakobs_magic_multiplier, original_goal.getY() + distance_unit.getYValue() * jakobs_magic_multiplier);
 						
-						// current ship action
+						double jakobs_magic_multiplier = magnitude_vector / v.getMagnitude();
+						
+						Position extended_goal = new Position(original_goal.getX() + distance_unit.getXValue() * jakobs_magic_multiplier, original_goal.getY() + distance_unit.getYValue()
+								* jakobs_magic_multiplier);
+						
+						// push!!
 						actions.put(ship.getId(), new MoveAction(local_space, ship.getPosition(), extended_goal));
 					}
 				}
@@ -252,7 +266,7 @@ public class Project3Client extends TeamClient
 				}
 			}
 		
-		for(Shadow s: astar_shadows)
+		for (Shadow s : astar_shadows)
 			shadows.add(s);
 		
 		if (global_output)
@@ -294,12 +308,12 @@ public class Project3Client extends TeamClient
 			// find the fastest way through it
 			fast_path = AStar(space, matrix_graph, matrix_graph.getNodes().get(1), global_output);
 			
-			//draw the solutions
+			// draw the solutions
 			astar_shadows.clear();
-
+			
 			// draw all the nodes
 			// for(Node n: nodes)
-			 // drawNodesConnections(space, n, n, 1, astar_shadows); // draw all nodes
+			// drawNodesConnections(space, n, n, 1, astar_shadows); // draw all nodes
 			
 			// draw all possible lines
 			// this.drawLines(space, matrix_graph, 0, astar_shadows);
@@ -319,9 +333,32 @@ public class Project3Client extends TeamClient
 		}
 		
 		// fast_path is good to go!
+		
+		// shadows
+		drawSolution(space, fast_path, 0, astar_shadows, Color.BLUE); // draw the shortest path
+		
+		// secondary a star layer makes us go faster!
+		AdjacencyMatrixGraph matrix_graph = calculateDistanceSetConnections(space, start_object_size, fast_path, global_output, (int) (MAX_NUM_NODE_CONNECTIONS), NodeConnections.closest);
+		
+		// find the fastest way through it
+		ArrayList<Node> faster_path = AStar(space, matrix_graph, matrix_graph.getNodes().get(1), global_output);
+		
 		ArrayList<Position> a_star = new ArrayList<Position>();
-		for (Node n : fast_path)
-			a_star.add(n.position);
+		if (faster_path == null)
+		{
+			for (Node n : fast_path)
+				a_star.add(n.position);
+		}
+		else
+		{
+			System.out.println("Faster path found!");
+			
+			// shadows
+			drawSolution(space, faster_path, 0, astar_shadows, Color.GREEN); // draw the shortest path
+			
+			for (Node n : faster_path)
+				a_star.add(n.position);
+		}
 		
 		return a_star;
 	}
@@ -685,8 +722,8 @@ public class Project3Client extends TeamClient
 		// remove good ships
 		ArrayList<Ship> Ships = new ArrayList<Ship>();
 		Ships.addAll(local_space.getShips());
-		for(int i = Ships.size() - 1; i >= 0; i--)
-			if(Ships.get(i).getTeamName().equals(getTeamName()))
+		for (int i = Ships.size() - 1; i >= 0; i--)
+			if (Ships.get(i).getTeamName().equals(getTeamName()))
 				local_space.removeObject(Ships.get(i));
 		
 		// put everything into our arraylist for checking
@@ -893,6 +930,24 @@ public class Project3Client extends TeamClient
 		return bases;
 	}
 	
+	private Base getClosestBase(Toroidal2DPhysics space, Position pos)
+	{
+		ArrayList<Base> bases = getMyBases(space);
+		Base closest = null;
+		double closest_distance = Double.MAX_VALUE;
+		for(Base b: bases)
+		{
+			double local_distance = space.findShortestDistance(pos, b.getPosition());  
+			if(local_distance < closest_distance)
+			{
+				closest_distance = local_distance;
+				closest = b;
+			}
+		}
+		
+		return closest;
+	}
+	
 	private ArrayList<Asteroid> getClosestAsteroids(Toroidal2DPhysics space, Ship ship, int count)
 	{
 		// make a copy of space
@@ -989,7 +1044,7 @@ public class Project3Client extends TeamClient
 	// everything below here is dealing with drawing and shadows
 	
 	@SuppressWarnings("unused")
-	private void drawSolution(Toroidal2DPhysics space, ArrayList<Node> nodes, double min_radius, ArrayList<Shadow> node_shadows)
+	private void drawSolution(Toroidal2DPhysics space, ArrayList<Node> nodes, double min_radius, ArrayList<Shadow> node_shadows, Color c)
 	{
 		if (nodes == null)
 			return;
@@ -997,11 +1052,11 @@ public class Project3Client extends TeamClient
 		for (Node n : nodes)
 		{
 			if (n.parent != null)
-				drawNodesConnections(space, n.parent, n, min_radius, node_shadows);
+				drawNodesConnections(space, n.parent, n, min_radius, node_shadows, c);
 		}
 	}
 	
-	private void drawNodesConnections(Toroidal2DPhysics space, Node a, Node b, double min_radius, ArrayList<Shadow> node_shadows)
+	private void drawNodesConnections(Toroidal2DPhysics space, Node a, Node b, double min_radius, ArrayList<Shadow> node_shadows, Color c)
 	{
 		node_shadows.add(new CircleShadow(1, Color.orange, a.position));
 		
@@ -1013,17 +1068,19 @@ public class Project3Client extends TeamClient
 				double next_x = lerp(0, divisors, j, a.position.getX(), b.position.getX());
 				double next_y = lerp(0, divisors, j, a.position.getY(), b.position.getY());
 				
-				node_shadows.add(new CircleShadow((int) (min_radius / 5.0), getTeamColor(), new Position(next_x, next_y)));
+				node_shadows.add(new CircleShadow((int) (min_radius / 5.0), c, new Position(next_x, next_y)));
 			}
 		}
 		else
 		{
-			node_shadows.add(new LineShadow(b.position, a.position, new Vector2D(a.position.getX() - b.position.getX(), a.position.getY() - b.position.getY())));
+			LineShadow s = new LineShadow(b.position, a.position, new Vector2D(a.position.getX() - b.position.getX(), a.position.getY() - b.position.getY()));
+			s.setLineColor(c);
+			node_shadows.add(s);
 		}
 	}
 	
 	@SuppressWarnings("unused")
-	private void drawLines(Toroidal2DPhysics space, AdjacencyMatrixGraph temp, double min_radius, ArrayList<Shadow> node_shadows)
+	private void drawLines(Toroidal2DPhysics space, AdjacencyMatrixGraph temp, double min_radius, ArrayList<Shadow> node_shadows, Color c)
 	{
 		ArrayList<Node> nodes = temp.getNodes();
 		
@@ -1033,7 +1090,7 @@ public class Project3Client extends TeamClient
 		{
 			for (Node n2 : nodes)
 				if (!n1.equals(n2) && !visited_nodes.contains(n2) && temp.getConnected(n1, n2))
-					drawNodesConnections(space, n1, n2, min_radius, node_shadows);
+					drawNodesConnections(space, n1, n2, min_radius, node_shadows, c);
 			
 			visited_nodes.add(n1);
 		}
