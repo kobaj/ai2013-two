@@ -8,6 +8,7 @@ import spacewar2.objects.Base;
 import spacewar2.objects.Beacon;
 import spacewar2.objects.Missile;
 import spacewar2.objects.Ship;
+import spacewar2.objects.SpacewarObject;
 import spacewar2.simulator.Toroidal2DPhysics;
 import spacewar2.utilities.Position;
 
@@ -35,50 +36,57 @@ public class State {
 	
 	public possibleTasks		action;
 	public Object				subject;
+	public Position				subjectPosition;
 	
-	// this variable determines how close a ship has to be to its local goal before
-	// the goal is considered reached
+	// distance from goal necessary to assume it's accomplished
 	final public static int SUBGOAL_DISTANCE = 30;
 	
 	public enum accomplishStates {accomplished, recalculate_plan, not_accomplished};
 	
-	public accomplishStates isAccomplished(Toroidal2DPhysics space, Ship ship)
-	{
+	public accomplishStates isAccomplished(Toroidal2DPhysics space, Ship ship){
+		
+		System.out.println("checking accomplishment");
+		
+		// The goal is to mine an asteroid
 		if(action == possibleTasks.mineAsteroid){
-			Asteroid asteroid_subject = (Asteroid) subject;
+			System.out.println("mine asteroid");
+			try{
+			// The asteroid is right where we expect
+			if(((Asteroid)subject).getPosition().equals(subjectPosition)){
+				System.out.println("not accomplished");
+				return accomplishStates.not_accomplished;
+			}
 			
-			// find out if the asteroid we're after is still there or not
-			Set<Asteroid> asteroids = space.getAsteroids();
-			for(Asteroid a: asteroids)
-				if(a.getId().equals(asteroid_subject.getId()))
-				{
-					// the asteroid has moved
-					if(space.findShortestDistance(position, asteroid_subject.getPosition()) > SUBGOAL_DISTANCE)
-						return accomplishStates.recalculate_plan;
-						
-					// asteroid has not moved
-					return accomplishStates.not_accomplished;
-				}
-			
-			// not still there, does it "look" like we collected it at least?
-			if(space.findShortestDistance(ship.getPosition(), asteroid_subject.getPosition()) < SUBGOAL_DISTANCE)
+			// The asteroid is gone because we probably collected it
+			if(space.findShortestDistance(ship.getPosition(), subjectPosition) < SUBGOAL_DISTANCE){
+				System.out.println("accomplished");
 				return accomplishStates.accomplished;
+			}
 			
-			// not still there and we are no where near it, plan has failed
+			// the asteroid is gone, and there's no evidence we collected it
+			System.out.println("recalculate");
 			return accomplishStates.recalculate_plan;
+			}catch(Exception e){
+				if(subjectPosition == null){
+					System.out.println("Subject is null");
+				}
+				System.out.println(e);
+			}
 		}
 		
-		else if(action == possibleTasks.moveToPosition)
-		{
-			Position position_subject = (Position) subject;
-			
-			if(space.findShortestDistance(ship.getPosition(), position_subject) < SUBGOAL_DISTANCE)
+		// The goal is to move to a position
+		else if(action == possibleTasks.moveToPosition){
+						
+			// We're there
+			if(space.findShortestDistance(ship.getPosition(), subjectPosition) < SUBGOAL_DISTANCE){
 				return accomplishStates.accomplished;
+			}
 			
+			// We aren't there
 			return accomplishStates.not_accomplished;
 		}
 		
-		// catch all.
+		// The goal is something else - not yet implemented
 		return accomplishStates.not_accomplished;
 	}
 	
@@ -124,13 +132,23 @@ public class State {
 		this.distanceToAsteroid = prev.distanceToAsteroid;
 		this.distanceToBase = prev.distanceToBase;
 		this.distanceToBeacon = prev.distanceToBeacon;
-		
 		this.action = action;
 		this.subject = subject;
+		try{
+			if(SpacewarObject.class.isAssignableFrom(subject.getClass())){
+				this.subjectPosition = ((SpacewarObject)subject).getPosition();
+			}else if(subject.getClass() == Position.class){
+				this.subjectPosition = (Position) subject ;
+			}else{
+				System.out.println("something is wrong");
+			}
+		}catch(Exception e){
+			System.out.println(e);
+			System.exit(0);
+		}
 		
 		if(action == possibleTasks.mineAsteroid){
 			Asteroid asteroid_subject = (Asteroid) subject;
-			
 			asteroidsGone.add(asteroid_subject);
 			updateEnergy(asteroid_subject.getPosition());//IT IS VERY IMPORTANT THAT THIS STAY ABOVE THE UPDATING OF POSITOIN
 			position = asteroid_subject.getPosition();
@@ -160,10 +178,8 @@ public class State {
 			energy -= ((ship_subject).getEnergy() / -Missile.MISSILE_DAMAGE ) * -Missile.MISSILE_COST; // cost of the number of bullets needed to kill
 		}
 		
-		else if(action == possibleTasks.moveToPosition)
-		{
+		else if(action == possibleTasks.moveToPosition){
 			Position position_subject = (Position) subject;
-			
 			updateEnergy(position_subject);
 			position = position_subject;
 			updateNearestAsteroid();
