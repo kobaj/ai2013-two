@@ -110,6 +110,10 @@ public class Project3Client extends TeamClient
 	private final int EMERGENCYMONEY = 1000;
 	private final int EMERGENCYENERGY = 300;
 	
+	ArrayList<Shadow> astar_shadows = new ArrayList<Shadow>();
+	
+	private HashMap<UUID, Boolean> stop_following = new HashMap<UUID, Boolean>();
+	
 	@Override
 	public void initialize()
 	{
@@ -145,11 +149,15 @@ public class Project3Client extends TeamClient
 		HashMap<UUID, SpacewarAction> actions = new HashMap<UUID, SpacewarAction>();
 		Toroidal2DPhysics local_space = space;
 		
+		ArrayList<Base> my_bases = new ArrayList<Base>();
+		ArrayList<Ship> my_ships = new ArrayList<Ship>();
+		
 		// old loop
 		for (SpacewarObject actionable : actionableObjects)
 			if (actionable instanceof Ship)
 			{
 				Ship ship = (Ship) actionable;
+				my_ships.add(ship);
 				
 				// first get our plan out of storage
 				LinkedList<State> ship_plan = object_plans.get(ship.getId());
@@ -166,9 +174,9 @@ public class Project3Client extends TeamClient
 					// prepare your anus...er, I mean, stack.
 					ship_plan = new LinkedList<State>();
 					
-					// first set our start state
 					try
 					{
+						// first set our start state
 						State start = new State(ship, local_space);
 						
 						// get a high level goal based on start
@@ -210,6 +218,7 @@ public class Project3Client extends TeamClient
 						System.out.println(e);
 						e.printStackTrace();
 					}
+					
 					// last (do not delete me)
 					System.gc();
 				}
@@ -225,6 +234,8 @@ public class Project3Client extends TeamClient
 				int ship_iterations = current_iterations.get(ship.getId());
 				if (ship_iterations <= 0)
 				{
+					this.stop_following.put(ship.getId(), false);
+					
 					current_iterations.put(ship.getId(), Project3Client.MAX_ITERATIONS);
 					
 					Position a_star_needed = null;
@@ -239,14 +250,21 @@ public class Project3Client extends TeamClient
 						double beacon_distance = space.findShortestDistance(closest_beacon.getPosition(), ship.getPosition());
 						
 						Position closest = closest_base.getPosition();
+						this.stop_following.put(ship.getId(), true);
+						
 						if (beacon_distance < base_distance)
+						{
 							closest = closest_beacon.getPosition();
+							this.stop_following.put(ship.getId(), false);
+						}
 						
 						a_star_needed = closest;
 						//actions.put(ship.getId(), new MoveAction(local_space, ship.getPosition(), closest));
 					}
 					else if (ship.getMoney() > this.EMERGENCYMONEY)
 					{
+						this.stop_following.put(ship.getId(), true);
+						
 						a_star_needed = this.getClosestBase(space, ship.getPosition()).getPosition();
 						//actions.put(ship.getId(), new MoveAction(local_space, ship.getPosition(), this.getClosestBase(space, ship.getPosition()).getPosition()));
 					}
@@ -254,6 +272,10 @@ public class Project3Client extends TeamClient
 					{
 						// get our next action from the plan
 						State next_action = ship_plan.peek();
+						
+						if(next_action.action == State.possibleTasks.goToBase)
+							this.stop_following.put(ship.getId(), true);
+						
 						accomplishStates is_accomplished = next_action.isAccomplished(local_space, ship);
 						if (is_accomplished == State.accomplishStates.accomplished)
 						{
@@ -298,6 +320,38 @@ public class Project3Client extends TeamClient
 					actions.put(ship.getId(), ship.getCurrentAction());
 				}
 			}
+			else if (actionable instanceof Base)
+			{
+				Base base = (Base) actionable;
+				my_bases.add(base);
+			}
+		
+		for(int i = 0; i < my_ships.size(); i++)
+		{
+			if(i < my_bases.size())
+			{
+				Ship local_ship = my_ships.get(i);
+				
+				if(this.stop_following.containsKey(local_ship.getId()) && this.stop_following.get(local_ship.getId()))
+				{
+				  // do nothing	
+				}
+				else
+				{
+					// project out a tail
+					Position original_goal = local_ship.getPosition();
+					double trailing_distance = (Base.BASE_RADIUS + Ship.SHIP_RADIUS) * 1.5;
+					
+					double trailing_x = trailing_distance * Math.cos(original_goal.getOrientation());
+					double trailing_y = trailing_distance * Math.sin(original_goal.getOrientation()); 
+					
+					Position extended_goal = new Position(original_goal.getX() - trailing_x,
+							original_goal.getY() - trailing_y);
+					
+					my_bases.get(i).setPosition(extended_goal);
+				}
+			}
+		}
 		
 		for (Shadow s : astar_shadows)
 			shadows.add(s);
@@ -307,7 +361,6 @@ public class Project3Client extends TeamClient
 		return actions;
 	}
 	
-	ArrayList<Shadow> astar_shadows = new ArrayList<Shadow>();
 	
 	private ArrayList<Position> independentAStar(Toroidal2DPhysics space, Position start, Position end, double start_object_size)
 	{
@@ -1143,10 +1196,11 @@ public class Project3Client extends TeamClient
 		{
 			if (this.shoot.containsKey(ship.getId()) && shoot.get(ship.getId()))
 			{
-				powerupMap.put(ship.getId(), SpacewarPowerupEnum.FIRE_EMP);
+				powerupMap.put(ship.getId(), SpacewarPowerupEnum.FIRE_MISSILE);
 				shoot.put(ship.getId(), false);
 			}
 		}
+		
 		return powerupMap;
 	}
 	
