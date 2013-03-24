@@ -71,7 +71,7 @@ public class State {
 			
 		}
 		// The goal is to go to the base
-		else if(action == possibleTasks.mineAsteroid){
+		else if(action == possibleTasks.goToBase){
 			System.out.println("go to base");
 			
 			// The base no longer belong to us
