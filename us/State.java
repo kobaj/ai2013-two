@@ -15,7 +15,7 @@ import spacewar2.utilities.Position;
 
 public class State {
 
-	public enum possibleTasks {mineAsteroid, moveToPosition, getBeacon, destroyShip};
+	public enum possibleTasks {mineAsteroid, moveToPosition, getBeacon, destroyShip, goToBase};
 	
 	public Toroidal2DPhysics	space;
 	public ArrayList<Ship>		shipsDestroyed;
@@ -39,7 +39,7 @@ public class State {
 	public Position				subjectPosition;
 	
 	// distance from goal necessary to assume it's accomplished
-	final public static int SUBGOAL_DISTANCE = 30;
+	final public static int SUBGOAL_DISTANCE = 50;
 	
 	public enum accomplishStates {accomplished, recalculate_plan, not_accomplished};
 	
@@ -50,11 +50,13 @@ public class State {
 		// The goal is to mine an asteroid
 		if(action == possibleTasks.mineAsteroid){
 			System.out.println("mine asteroid");
-			try{
+				
 			// The asteroid is right where we expect
-			if(((Asteroid)subject).getPosition().equals(subjectPosition)){
-				System.out.println("not accomplished");
-				return accomplishStates.not_accomplished;
+			for(Asteroid a : space.getAsteroids()){
+				if(a.getPosition().equals(subjectPosition)){
+					System.out.println("not accomplished");
+					return accomplishStates.not_accomplished;
+				}
 			}
 			
 			// The asteroid is gone because we probably collected it
@@ -66,14 +68,35 @@ public class State {
 			// the asteroid is gone, and there's no evidence we collected it
 			System.out.println("recalculate");
 			return accomplishStates.recalculate_plan;
-			}catch(Exception e){
-				if(subjectPosition == null){
-					System.out.println("Subject is null");
-				}
-				System.out.println(e);
-			}
+			
 		}
-		
+		// The goal is to go to the base
+		else if(action == possibleTasks.mineAsteroid){
+			System.out.println("go to base");
+			
+			// The base no longer belong to us
+			Base theBase = null;
+			for(Base b : space.getBases()){
+				if(b.getPosition().equals(subjectPosition)){
+					theBase = b;
+				}
+			}
+			if(theBase == null){
+				System.out.println("recalculate");
+				return accomplishStates.recalculate_plan;			
+			}
+			
+			// We are within range of the base
+			if(space.findShortestDistance(ship.getPosition(), subjectPosition) < SUBGOAL_DISTANCE){
+				System.out.println("accomplished");
+				return accomplishStates.accomplished;
+			}
+			
+			// the base belong to us be we are not there yet
+			System.out.println("not accomplished");
+			return accomplishStates.not_accomplished;
+			
+		}
 		// The goal is to move to a position
 		else if(action == possibleTasks.moveToPosition){
 						
@@ -182,6 +205,14 @@ public class State {
 			Position position_subject = (Position) subject;
 			updateEnergy(position_subject);
 			position = position_subject;
+			updateNearestAsteroid();
+			updateNearestBase();
+			updateNearestBeacon();
+		}
+		else if(action == possibleTasks.goToBase){
+			Base base_subject = (Base) subject;
+			energy = Ship.SHIP_MAX_ENERGY;
+			position = base_subject.getPosition();
 			updateNearestAsteroid();
 			updateNearestBase();
 			updateNearestBeacon();
