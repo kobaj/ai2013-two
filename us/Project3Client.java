@@ -111,6 +111,7 @@ public class Project3Client extends TeamClient
 	private final int EMERGENCYENERGY = 300;
 	
 	ArrayList<Shadow> astar_shadows = new ArrayList<Shadow>();
+	private Shadow projection;
 	
 	private HashMap<UUID, Boolean> stop_following = new HashMap<UUID, Boolean>();
 	
@@ -232,8 +233,6 @@ public class Project3Client extends TeamClient
 					{
 						this.stop_following.put(ship.getId(), false);
 						
-						current_iterations.put(ship.getId(), Project3Client.MAX_ITERATIONS);
-						
 						Position a_star_needed = null;
 						
 						// short circuit
@@ -289,6 +288,8 @@ public class Project3Client extends TeamClient
 						
 						if (a_star_needed != null)
 						{
+							current_iterations.put(ship.getId(), Project3Client.MAX_ITERATIONS);
+							
 							// calcualate astar
 							ArrayList<Position> subgoals = this.independentAStar(local_space, ship.getPosition(), a_star_needed, ship.getRadius());
 							
@@ -304,6 +305,7 @@ public class Project3Client extends TeamClient
 									* jakobs_magic_multiplier);
 							
 							// push!!
+							projection = new CircleShadow(3, Color.orange, extended_goal);
 							actions.put(ship.getId(), new MoveAction(local_space, ship.getPosition(), extended_goal));
 						}
 					}
@@ -332,22 +334,22 @@ public class Project3Client extends TeamClient
 					}
 					else
 					{
-						/*
 						// project out a tail
-						Position original_goal = local_ship.getPosition();
-						double trailing_distance = (Base.BASE_RADIUS + Ship.SHIP_RADIUS) * 1.5;
+						//Position original_goal = local_ship.getPosition();
+						//double trailing_distance = (Base.BASE_RADIUS + Ship.SHIP_RADIUS) * 1.5;
 						
-						double trailing_x = trailing_distance * Math.cos(original_goal.getOrientation());
-						double trailing_y = trailing_distance * Math.sin(original_goal.getOrientation());
+						//double trailing_x = trailing_distance * Math.cos(original_goal.getOrientation());
+						//double trailing_y = trailing_distance * Math.sin(original_goal.getOrientation());
 						
-						Position extended_goal = new Position(original_goal.getX() - trailing_x, original_goal.getY() - trailing_y);
+						//Position extended_goal = new Position(original_goal.getX() - trailing_x, original_goal.getY() - trailing_y);
 						
-						my_bases.get(i).setPosition(extended_goal);
-						*/
+						//my_bases.get(i).setPosition(extended_goal);				
 					}
 				}
 			}
 			
+			//drawing things
+			shadows.add(projection);
 			for (Shadow s : astar_shadows)
 				shadows.add(s);
 			
