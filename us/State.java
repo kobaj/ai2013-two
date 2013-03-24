@@ -221,7 +221,21 @@ public class State {
 	}
 	
 	private void updateNearestAsteroid(){
+		
 		Asteroid nearestAsteroid = null;
+		for(Asteroid a : space.getAsteroids()){
+			if(!asteroidsGone.contains(a)){
+				if(nearestAsteroid == null || space.findShortestDistance(position, a.getPosition()) < space.findShortestDistance(position, nearestAsteroid.getPosition())){
+					if(a.isMineable())
+					{
+						nearestAsteroid = a;
+					}
+				}
+			}
+		}
+		this.closest_mineable_asteroid = nearestAsteroid;
+		
+		nearestAsteroid = null;
 		for(Asteroid a : space.getAsteroids()){
 			if(!asteroidsGone.contains(a)){
 				if(nearestAsteroid == null || space.findShortestDistance(position, a.getPosition()) < space.findShortestDistance(position, nearestAsteroid.getPosition())){
@@ -235,7 +249,6 @@ public class State {
 		}
 		this.closest_asteroid = nearestAsteroid;
 		this.distanceToAsteroid = space.findShortestDistance(position, nearestAsteroid.getPosition());
-
 	}
 
 	private void updateNearestBeacon(){
