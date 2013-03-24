@@ -174,7 +174,7 @@ public class Project3Client extends TeamClient
 						System.out.println("many plans");
 						
 						State sub_previous = next;
-						for (int i = 1; i <= 3; i++)
+						for (int i = 1; i <= 10; i++)
 						{
 							if (sub_previous.closest_mineable_asteroid == null)
 								break;
@@ -226,9 +226,22 @@ public class Project3Client extends TeamClient
 					{
 						// calcualate astar
 						ArrayList<Position> subgoals = this.independentAStar(local_space, ship.getPosition(), next_action.position, ship.getRadius());
+
+						Position original_goal = subgoals.get(1);
+						
+						// extend the goal for higher velocity
+						Vector2D v = space.findShortestDistanceVector(ship.getPosition(), original_goal);
+						Vector2D distance_unit = v.getUnitVector();
+
+						ArrayList<Shadow> goal_shadow = new ArrayList<Shadow>();
+						SpacewarAction newAction;
+
+						double jakobs_magic_multiplier = magnitude_vector / v.getMagnitude();
+
+						Position extended_goal = new Position(original_goal.getX() + distance_unit.getXValue() * jakobs_magic_multiplier, original_goal.getY() + distance_unit.getYValue() * jakobs_magic_multiplier);
 						
 						// current ship action
-						actions.put(ship.getId(), new MoveAction(local_space, ship.getPosition(), subgoals.get(1)));
+						actions.put(ship.getId(), new MoveAction(local_space, ship.getPosition(), extended_goal));
 					}
 				}
 				else
@@ -283,7 +296,13 @@ public class Project3Client extends TeamClient
 			
 			//draw the solutions
 			astar_shadows.clear();
-			//this.drawLines(space, matrix_graph, 0, astar_shadows);
+
+			// draw all the nodes
+			// for(Node n: nodes)
+			 // drawNodesConnections(space, n, n, 1, astar_shadows); // draw all nodes
+			
+			// draw all possible lines
+			// this.drawLines(space, matrix_graph, 0, astar_shadows);
 			
 			if (fast_path != null)
 				break;
@@ -316,7 +335,7 @@ public class Project3Client extends TeamClient
 				radius = 10;
 			
 			shadows.add(new CircleShadow(radius, Color.red, plan.get(i).position));
-			// shadows.add(new ColorLineShadow(plan.get(i + 1).position, plan.get(i).position, Color.CYAN));
+			shadows.add(new ColorLineShadow(plan.get(i).position, plan.get(i + 1).position, Color.CYAN));
 			
 			if (global_output)
 			{
@@ -662,6 +681,13 @@ public class Project3Client extends TeamClient
 		for (int i = Asteroids.size() - 1; i >= 0; i--)
 			if (Asteroids.get(i).isMineable())
 				local_space.removeObject(Asteroids.get(i));
+		
+		// remove good ships
+		ArrayList<Ship> Ships = new ArrayList<Ship>();
+		Ships.addAll(local_space.getShips());
+		for(int i = Ships.size() - 1; i >= 0; i--)
+			if(Ships.get(i).getTeamName().equals(getTeamName()))
+				local_space.removeObject(Ships.get(i));
 		
 		// put everything into our arraylist for checking
 		if (output)
