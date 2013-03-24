@@ -71,7 +71,7 @@ public class Project3Client extends TeamClient
 	final public static double magnitude_vector = 2500.0;
 	
 	// how many loops should we go through before recalculating astar and nodes
-	final public static int MAX_ITERATIONS = 10;
+	final public static int MAX_ITERATIONS = 20;
 	HashMap<UUID, Integer> current_iterations;
 	
 	// screen resolution
@@ -138,44 +138,45 @@ public class Project3Client extends TeamClient
 	@Override
 	public Map<UUID, SpacewarAction> getMovementStart(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
 	{
-		if (global_output)
-			System.out.println("Begin");
-		
-		// store necessary variables
-		Long time = System.currentTimeMillis();
-		X_RES = space.getWidth();
-		Y_RES = space.getHeight();
-		
-		HashMap<UUID, SpacewarAction> actions = new HashMap<UUID, SpacewarAction>();
-		Toroidal2DPhysics local_space = space;
-		
-		ArrayList<Base> my_bases = new ArrayList<Base>();
-		ArrayList<Ship> my_ships = new ArrayList<Ship>();
-		
-		// old loop
-		for (SpacewarObject actionable : actionableObjects)
-			if (actionable instanceof Ship)
-			{
-				Ship ship = (Ship) actionable;
-				my_ships.add(ship);
-				
-				// first get our plan out of storage
-				LinkedList<State> ship_plan = object_plans.get(ship.getId());
-				
-				// if our plan is empty recalculate a new plan
-				boolean recalculate_plan = false;
-				if (ship_plan == null || ship_plan.isEmpty())
-					recalculate_plan = true;
-				
-				if (recalculate_plan)
+		try
+		{
+			
+			if (global_output)
+				System.out.println("Begin");
+			
+			// store necessary variables
+			Long time = System.currentTimeMillis();
+			X_RES = space.getWidth();
+			Y_RES = space.getHeight();
+			
+			HashMap<UUID, SpacewarAction> actions = new HashMap<UUID, SpacewarAction>();
+			Toroidal2DPhysics local_space = space;
+			
+			ArrayList<Base> my_bases = new ArrayList<Base>();
+			ArrayList<Ship> my_ships = new ArrayList<Ship>();
+			
+			// old loop
+			for (SpacewarObject actionable : actionableObjects)
+				if (actionable instanceof Ship)
 				{
-					System.out.println("recalculate plan");
+					Ship ship = (Ship) actionable;
+					my_ships.add(ship);
 					
-					// prepare your anus...er, I mean, stack.
-					ship_plan = new LinkedList<State>();
+					// first get our plan out of storage
+					LinkedList<State> ship_plan = object_plans.get(ship.getId());
 					
-					try
+					// if our plan is empty recalculate a new plan
+					boolean recalculate_plan = false;
+					if (ship_plan == null || ship_plan.isEmpty())
+						recalculate_plan = true;
+					
+					if (recalculate_plan)
 					{
+						System.out.println("recalculate plan");
+						
+						// prepare your anus...er, I mean, stack.
+						ship_plan = new LinkedList<State>();
+						
 						// first set our start state
 						State start = new State(ship, local_space);
 						
@@ -184,19 +185,20 @@ public class Project3Client extends TeamClient
 						State next = new State(start, possibleTasks.mineAsteroid, original_goal);
 						ship_plan.add(next);
 						
-						System.out.println("many plans");
-						
 						State sub_previous = next;
 						for (int i = 1; i <= 10; i++)
 						{
 							State sub_next = null;
 							
+							if (sub_previous.closest_mineable_asteroid == null)
+								System.out.println("null found in plan");
+							
 							if (sub_previous.closest_mineable_asteroid == null || sub_previous.energy < this.ENERGYCUTOFF || sub_previous.money > this.MONEYCUTOFF || i % 5 == 0)
 							{
-								if (sub_previous.action == possibleTasks.moveToPosition)
+								if (sub_previous.action == possibleTasks.goToBase)
 									break;
 								
-								sub_next = new State(sub_previous, possibleTasks.moveToPosition, this.getClosestBase(space, sub_previous.position).getPosition());
+								sub_next = new State(sub_previous, possibleTasks.goToBase, this.getClosestBase(space, sub_previous.position));
 							}
 							else
 							{
@@ -212,155 +214,156 @@ public class Project3Client extends TeamClient
 						
 						// and push it to our storage
 						object_plans.put(ship.getId(), ship_plan);
-					}
-					catch (Exception e)
-					{
-						System.out.println(e);
-						e.printStackTrace();
+						
+						// last (do not delete me)
+						System.gc();
 					}
 					
-					// last (do not delete me)
-					System.gc();
-				}
-				
-				// and draw
-				drawPlan(ship_plan);
-				
-				// see if its been 20 timesteps
-				if (!current_iterations.containsKey(ship.getId()))
-					current_iterations.put(ship.getId(), 0);
-				
-				// actual 20 timestep calcs
-				int ship_iterations = current_iterations.get(ship.getId());
-				if (ship_iterations <= 0)
-				{
-					this.stop_following.put(ship.getId(), false);
+					// and draw
+					drawPlan(ship_plan);
 					
-					current_iterations.put(ship.getId(), Project3Client.MAX_ITERATIONS);
+					// see if its been 20 timesteps
+					if (!current_iterations.containsKey(ship.getId()))
+						current_iterations.put(ship.getId(), 0);
 					
-					Position a_star_needed = null;
-					
-					// short circuit
-					if (ship.getEnergy() < this.EMERGENCYENERGY)
+					// actual 20 timestep calcs
+					int ship_iterations = current_iterations.get(ship.getId());
+					if (ship_iterations <= 0)
 					{
-						Base closest_base = this.getClosestBase(space, ship.getPosition());
-						Beacon closest_beacon = this.getClosestBeacon(space, ship);
+						this.stop_following.put(ship.getId(), false);
 						
-						double base_distance = space.findShortestDistance(closest_base.getPosition(), ship.getPosition());
-						double beacon_distance = space.findShortestDistance(closest_beacon.getPosition(), ship.getPosition());
+						current_iterations.put(ship.getId(), Project3Client.MAX_ITERATIONS);
 						
-						Position closest = closest_base.getPosition();
-						this.stop_following.put(ship.getId(), true);
+						Position a_star_needed = null;
 						
-						if (beacon_distance < base_distance)
+						// short circuit
+						if (ship.getEnergy() < this.EMERGENCYENERGY)
 						{
-							closest = closest_beacon.getPosition();
-							this.stop_following.put(ship.getId(), false);
+							Base closest_base = this.getClosestBase(space, ship.getPosition());
+							Beacon closest_beacon = this.getClosestBeacon(space, ship);
+							
+							double base_distance = space.findShortestDistance(closest_base.getPosition(), ship.getPosition());
+							double beacon_distance = space.findShortestDistance(closest_beacon.getPosition(), ship.getPosition());
+							
+							Position closest = closest_base.getPosition();
+							this.stop_following.put(ship.getId(), true);
+							
+							if (beacon_distance < base_distance)
+							{
+								closest = closest_beacon.getPosition();
+								this.stop_following.put(ship.getId(), false);
+							}
+							
+							a_star_needed = closest;
+						}
+						else if (ship.getMoney() > this.EMERGENCYMONEY)
+						{
+							this.stop_following.put(ship.getId(), true);
+							
+							a_star_needed = this.getClosestBase(space, ship.getPosition()).getPosition();
+						}
+						else
+						{
+							// get our next action from the plan
+							State next_action = ship_plan.peek();
+							
+							if (next_action.action == State.possibleTasks.goToBase)
+								this.stop_following.put(ship.getId(), true);
+							
+							accomplishStates is_accomplished = next_action.isAccomplished(local_space, ship);
+							if (is_accomplished == State.accomplishStates.accomplished)
+							{
+								ship_plan.pop();
+								object_plans.put(ship.getId(), ship_plan);
+							}
+							else if (is_accomplished == State.accomplishStates.recalculate_plan)
+							{
+								ship_plan.clear();
+								object_plans.put(ship.getId(), ship_plan);
+							}
+							else if (is_accomplished == State.accomplishStates.not_accomplished)
+							{
+								a_star_needed = next_action.position;
+							}
 						}
 						
-						a_star_needed = closest;
-						//actions.put(ship.getId(), new MoveAction(local_space, ship.getPosition(), closest));
-					}
-					else if (ship.getMoney() > this.EMERGENCYMONEY)
-					{
-						this.stop_following.put(ship.getId(), true);
-						
-						a_star_needed = this.getClosestBase(space, ship.getPosition()).getPosition();
-						//actions.put(ship.getId(), new MoveAction(local_space, ship.getPosition(), this.getClosestBase(space, ship.getPosition()).getPosition()));
+						if (a_star_needed != null)
+						{
+							// calcualate astar
+							ArrayList<Position> subgoals = this.independentAStar(local_space, ship.getPosition(), a_star_needed, ship.getRadius());
+							
+							Position original_goal = subgoals.get(1);
+							
+							// extend the goal for higher velocity
+							Vector2D v = space.findShortestDistanceVector(ship.getPosition(), original_goal);
+							Vector2D distance_unit = v.getUnitVector();
+							
+							double jakobs_magic_multiplier = magnitude_vector / v.getMagnitude();
+							
+							Position extended_goal = new Position(original_goal.getX() + distance_unit.getXValue() * jakobs_magic_multiplier, original_goal.getY() + distance_unit.getYValue()
+									* jakobs_magic_multiplier);
+							
+							// push!!
+							actions.put(ship.getId(), new MoveAction(local_space, ship.getPosition(), extended_goal));
+						}
 					}
 					else
 					{
-						// get our next action from the plan
-						State next_action = ship_plan.peek();
+						current_iterations.put(ship.getId(), ship_iterations - 1);
 						
-						if(next_action.action == State.possibleTasks.goToBase)
-							this.stop_following.put(ship.getId(), true);
-						
-						accomplishStates is_accomplished = next_action.isAccomplished(local_space, ship);
-						if (is_accomplished == State.accomplishStates.accomplished)
-						{
-							ship_plan.pop();
-							object_plans.put(ship.getId(), ship_plan);
-						}
-						else if (is_accomplished == State.accomplishStates.recalculate_plan)
-						{
-							ship_plan.clear();
-							object_plans.put(ship.getId(), ship_plan);
-						}
-						else if (is_accomplished == State.accomplishStates.not_accomplished)
-						{
-							a_star_needed = next_action.position;
-						}
+						actions.put(ship.getId(), ship.getCurrentAction());
 					}
+				}
+				else if (actionable instanceof Base)
+				{
+					Base base = (Base) actionable;
+					my_bases.add(base);
+				}
+			
+			for (int i = 0; i < my_ships.size(); i++)
+			{
+				if (i < my_bases.size())
+				{
+					Ship local_ship = my_ships.get(i);
 					
-					if(a_star_needed != null)
+					if (this.stop_following.containsKey(local_ship.getId()) && this.stop_following.get(local_ship.getId()))
 					{
-						// calcualate astar
-						ArrayList<Position> subgoals = this.independentAStar(local_space, ship.getPosition(), a_star_needed, ship.getRadius());
+						// do nothing
+					}
+					else
+					{
+						/*
+						// project out a tail
+						Position original_goal = local_ship.getPosition();
+						double trailing_distance = (Base.BASE_RADIUS + Ship.SHIP_RADIUS) * 1.5;
 						
-						Position original_goal = subgoals.get(1);
+						double trailing_x = trailing_distance * Math.cos(original_goal.getOrientation());
+						double trailing_y = trailing_distance * Math.sin(original_goal.getOrientation());
 						
-						// extend the goal for higher velocity
-						Vector2D v = space.findShortestDistanceVector(ship.getPosition(), original_goal);
-						Vector2D distance_unit = v.getUnitVector();
+						Position extended_goal = new Position(original_goal.getX() - trailing_x, original_goal.getY() - trailing_y);
 						
-						double jakobs_magic_multiplier = magnitude_vector / v.getMagnitude();
-						
-						Position extended_goal = new Position(original_goal.getX() + distance_unit.getXValue() * jakobs_magic_multiplier, original_goal.getY() + distance_unit.getYValue()
-								* jakobs_magic_multiplier);
-						
-						// push!!
-						actions.put(ship.getId(), new MoveAction(local_space, ship.getPosition(), extended_goal));
+						my_bases.get(i).setPosition(extended_goal);
+						*/
 					}
 				}
-				else
-				{
-					current_iterations.put(ship.getId(), ship_iterations - 1);
-					
-					actions.put(ship.getId(), ship.getCurrentAction());
-				}
 			}
-			else if (actionable instanceof Base)
-			{
-				Base base = (Base) actionable;
-				my_bases.add(base);
-			}
+			
+			for (Shadow s : astar_shadows)
+				shadows.add(s);
+			
+			if (global_output)
+				System.out.println("TimeSpent in Client: " + (System.currentTimeMillis() - time));
 		
-		for(int i = 0; i < my_ships.size(); i++)
+			return actions;
+		}
+		catch (Exception e)
 		{
-			if(i < my_bases.size())
-			{
-				Ship local_ship = my_ships.get(i);
-				
-				if(this.stop_following.containsKey(local_ship.getId()) && this.stop_following.get(local_ship.getId()))
-				{
-				  // do nothing	
-				}
-				else
-				{
-					// project out a tail
-					Position original_goal = local_ship.getPosition();
-					double trailing_distance = (Base.BASE_RADIUS + Ship.SHIP_RADIUS) * 1.5;
-					
-					double trailing_x = trailing_distance * Math.cos(original_goal.getOrientation());
-					double trailing_y = trailing_distance * Math.sin(original_goal.getOrientation()); 
-					
-					Position extended_goal = new Position(original_goal.getX() - trailing_x,
-							original_goal.getY() - trailing_y);
-					
-					my_bases.get(i).setPosition(extended_goal);
-				}
-			}
+			System.out.println(e);
+			e.printStackTrace();
 		}
 		
-		for (Shadow s : astar_shadows)
-			shadows.add(s);
-		
-		if (global_output)
-			System.out.println("TimeSpent in Client: " + (System.currentTimeMillis() - time));
-		return actions;
+		return null;
 	}
-	
 	
 	private ArrayList<Position> independentAStar(Toroidal2DPhysics space, Position start, Position end, double start_object_size)
 	{
@@ -419,41 +422,22 @@ public class Project3Client extends TeamClient
 		}
 		
 		// fast_path is good to go!
+		ArrayList<Position> a_star = new ArrayList<Position>();
+		for (Node n : fast_path)
+			a_star.add(n.position);
 		
 		// shadows
 		drawSolution(space, fast_path, 0, astar_shadows, Color.BLUE); // draw the shortest path
-		
-		// secondary a star layer makes us go faster!
-		AdjacencyMatrixGraph matrix_graph = calculateDistanceSetConnections(space, start_object_size, fast_path, global_output, (int) (MAX_NUM_NODE_CONNECTIONS), NodeConnections.closest);
-		
-		// find the fastest way through it
-		ArrayList<Node> faster_path = AStar(space, matrix_graph, matrix_graph.getNodes().get(1), global_output);
-		
-		ArrayList<Position> a_star = new ArrayList<Position>();
-		if (faster_path == null)
-		{
-			for (Node n : fast_path)
-				a_star.add(n.position);
-		}
-		else
-		{
-			System.out.println("Faster path found!");
-			
-			// shadows
-			drawSolution(space, faster_path, 0, astar_shadows, Color.GREEN); // draw the shortest path
-			
-			for (Node n : faster_path)
-				a_star.add(n.position);
-		}
 		
 		return a_star;
 	}
 	
 	private void drawPlan(LinkedList<State> plan)
 	{
+		int radius = 2;
+		
 		for (int i = 0; i < plan.size() - 1; i++)
 		{
-			int radius = 2;
 
 			shadows.add(new CircleShadow(radius, Color.red, plan.get(i).position));
 			shadows.add(new ColorLineShadow(plan.get(i).position, plan.get(i + 1).position, Color.CYAN));
@@ -463,6 +447,8 @@ public class Project3Client extends TeamClient
 				System.out.println(plan.get(i).toString());
 			}
 		}
+		
+		shadows.add(new CircleShadow(radius, Color.red, plan.get(plan.size() - 1).position));
 		
 	}
 	
