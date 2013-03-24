@@ -162,32 +162,36 @@ public class Project3Client extends TeamClient
 					ship_plan = new LinkedList<State>();
 					
 					// first set our start state
-					State start = new State(ship, local_space);
-					
-					// get a high level goal based on start
-					Asteroid original_goal = getClosestAsteroid(local_space, ship);
-					State next = new State(start, possibleTasks.mineAsteroid, original_goal);
-					
-					// find subgoals for our highlevel goal
-					ArrayList<Position> subgoals = this.independentAStar(local_space, start.position, next.position, ship.getRadius());
-					
-					// push goals onto stack.
-					State sub_previous = start;
-					for (int i = 1; i <= subgoals.size() - 2; i++)
+					try
 					{
-						State sub_next = new State(sub_previous, possibleTasks.moveToPosition, subgoals.get(i));
-						ship_plan.addLast(sub_next);
-						sub_previous = sub_next;
+						State start = new State(ship, local_space);
+						
+						// get a high level goal based on start
+						Asteroid original_goal = getClosestAsteroid(local_space, ship);
+						State next = new State(start, possibleTasks.mineAsteroid, original_goal);
+						ship_plan.add(next);
+						
+						System.out.println("many plans");
+						
+						State sub_previous = next;
+						for (int i = 1; i <= 3; i++)
+						{
+							if (sub_previous.closest_mineable_asteroid == null)
+								break;
+							
+							State sub_next = new State(sub_previous, possibleTasks.mineAsteroid, sub_previous.closest_mineable_asteroid);
+							ship_plan.addLast(sub_next);
+							sub_previous = sub_next;
+						}
+						
+						// and push it to our storage
+						object_plans.put(ship.getId(), ship_plan);
 					}
-					next = new State(sub_previous, possibleTasks.mineAsteroid, original_goal);
-					ship_plan.addLast(next);
-					
-					// then add one future goal
-					ship_plan.add(new State(next, possibleTasks.mineAsteroid, next.closest_mineable_asteroid));
-					
-					// and push it to our storage
-					object_plans.put(ship.getId(), ship_plan);
-					
+					catch (Exception e)
+					{
+						System.out.println(e);
+						e.printStackTrace();
+					}
 					// last (do not delete me)
 					System.gc();
 				}
@@ -218,10 +222,13 @@ public class Project3Client extends TeamClient
 						ship_plan.clear();
 						object_plans.put(ship.getId(), ship_plan);
 					}
-					else
+					else if (is_accomplished == State.accomplishStates.not_accomplished)
 					{
+						// calcualate astar
+						ArrayList<Position> subgoals = this.independentAStar(local_space, ship.getPosition(), next_action.position, ship.getRadius());
+						
 						// current ship action
-						actions.put(ship.getId(), new MoveAction(local_space, ship.getPosition(), next_action.position));
+						actions.put(ship.getId(), new MoveAction(local_space, ship.getPosition(), subgoals.get(1)));
 					}
 				}
 				else
@@ -232,10 +239,15 @@ public class Project3Client extends TeamClient
 				}
 			}
 		
+		for(Shadow s: astar_shadows)
+			shadows.add(s);
+		
 		if (global_output)
 			System.out.println("TimeSpent in Client: " + (System.currentTimeMillis() - time));
 		return actions;
 	}
+	
+	ArrayList<Shadow> astar_shadows = new ArrayList<Shadow>();
 	
 	private ArrayList<Position> independentAStar(Toroidal2DPhysics space, Position start, Position end, double start_object_size)
 	{
@@ -254,7 +266,7 @@ public class Project3Client extends TeamClient
 		
 		ArrayList<Node> fast_path = null;
 		
-		for (int e = 1; e < 3; e++)
+		for (int e = 1; e < 2; e++)
 		{
 			ArrayList<Node> nodes = new ArrayList<Node>();
 			for (Node n : outer_nodes)
@@ -269,12 +281,18 @@ public class Project3Client extends TeamClient
 			// find the fastest way through it
 			fast_path = AStar(space, matrix_graph, matrix_graph.getNodes().get(1), global_output);
 			
-			if (fast_path == null)
+			//draw the solutions
+			astar_shadows.clear();
+			//this.drawLines(space, matrix_graph, 0, astar_shadows);
+			
+			if (fast_path != null)
 				break;
 		}
 		
 		if (fast_path == null)
 		{
+			System.out.println("a star failed");
+			
 			ArrayList<Position> fake_a_star = new ArrayList<Position>();
 			fake_a_star.add(start);
 			fake_a_star.add(end);
@@ -542,7 +560,7 @@ public class Project3Client extends TeamClient
 	
 	// generate a grid of nodes in the rectangle surrounding the diagonal between start and goal
 	// be sure to pad this grid
-	private void calculateNodesGrid(Toroidal2DPhysics space, double divider, int padding, Position ship, boolean output, ArrayList<Node> nodes)
+	private void calculateNodesGrid(Toroidal2DPhysics space, double divider, int padding, Position start, boolean output, ArrayList<Node> nodes)
 	{
 		if (output)
 		{
@@ -559,7 +577,7 @@ public class Project3Client extends TeamClient
 		int min_y = 0;
 		int max_y = Project3Client.Y_RES;
 		
-		Vector2D smallest_distance = space.findShortestDistanceVector(ship, goal);
+		Vector2D smallest_distance = space.findShortestDistanceVector(start, goal);
 		double radian = smallest_distance.getAngle();
 		double degree = Math.toDegrees(radian);
 		
@@ -569,23 +587,23 @@ public class Project3Client extends TeamClient
 		// focus in the search just a little bit
 		if (-90 < degree && degree < 90)
 		{
-			min_x = (int) (ship.getX() - padding);
+			min_x = (int) (start.getX() - padding);
 			max_x = (int) (goal.getX() + padding);
 		}
 		else
 		{
-			max_x = (int) (ship.getX() + padding);
+			max_x = (int) (start.getX() + padding);
 			min_x = (int) (goal.getX() - padding);
 		}
 		
 		if (180 > degree && degree > 0)
 		{
-			min_y = (int) (ship.getY() - padding);
+			min_y = (int) (start.getY() - padding);
 			max_y = (int) (goal.getY() + padding);
 		}
 		else
 		{
-			max_y = (int) (ship.getY() + padding);
+			max_y = (int) (start.getY() + padding);
 			min_y = (int) (goal.getY() - padding);
 		}
 		
@@ -600,7 +618,7 @@ public class Project3Client extends TeamClient
 				
 				// find the distance to player
 				// dont add it if the player is really close
-				if (space.findShortestDistance(position, ship) > NODEGOAL_DISTANCE)
+				if (space.findShortestDistance(position, start) > NODEGOAL_DISTANCE)
 				{
 					nodes.add(new Node(position, e, NodeType.regular, space.findShortestDistance(position, goal)));
 					e++;
