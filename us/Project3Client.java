@@ -127,6 +127,9 @@ public class Project3Client extends TeamClient
 	
 	private MapDivision current_division = MapDivision.leftright;
 	
+	// predict movement of moving asteroids
+	ArrayList<Shadow> node_tracking = new ArrayList<Shadow>();
+	
 	@Override
 	public void initialize()
 	{
@@ -188,7 +191,6 @@ public class Project3Client extends TeamClient
 					
 					if (recalculate_plan)
 					{
-						
 						// prepare your PLEASE WATCH THE LANGUAGE, I mean, stack.
 						ship_plan = new LinkedList<State>();
 						
@@ -387,7 +389,10 @@ public class Project3Client extends TeamClient
 			}
 			
 			shadows.add(projection);
+			for(Shadow s: node_tracking)
+				shadows.add(s);
 			for (Ship ship : my_ships)
+				if(astar_shadows.containsKey(ship.getId()))
 				for (Shadow shad : astar_shadows.get(ship.getId()))
 					shadows.add(shad);
 			
@@ -870,6 +875,29 @@ public class Project3Client extends TeamClient
 			if (Ships.get(i).getTeamName().equals(getTeamName()))
 				local_space.removeObject(Ships.get(i));
 		
+		//add in more dummy asteroids that are moving
+		node_tracking.clear();
+		ArrayList<Asteroid> Asteroids_bad = new ArrayList<Asteroid>();
+		Asteroids_bad.addAll(local_space.getAsteroids());
+		for(int i = Asteroids_bad.size() - 1; i >=0; i--)
+		{
+			Asteroid bad = Asteroids_bad.get(i);
+			if(bad.isMoveable())
+			{
+				Position original_goal = bad.getPosition();
+				double direction =original_goal.getTranslationalVelocity().getAngle();
+				double forward_distance = -bad.getRadius() * 1.5;
+		
+				double trailing_x = forward_distance * Math.cos(direction);
+				double trailing_y = forward_distance * Math.sin(direction);
+		
+				Position extended_goal = new Position(original_goal.getX() - trailing_x, original_goal.getY() - trailing_y);
+				local_space.addObject(new Asteroid(extended_goal, bad.isMineable(), bad.getRadius(), true));
+				
+				node_tracking.add(new CircleShadow(bad.getRadius(), Color.YELLOW, extended_goal));
+			}
+		}
+		
 		// put everything into our arraylist for checking
 		if (output)
 			System.out.println("All object collection");
@@ -1305,12 +1333,13 @@ public class Project3Client extends TeamClient
 			}
 			else if (availableMoney >= currentCostOfShip)
 			{
+				System.out.println("buying a ship");
 				purchases.put(ship.getId(), SpacewarPurchaseEnum.SHIP);
 			}
 			
-			if (can_buy_base.get(ship.getId()) && this.buy_a_base.get(ship.getId()))
+			if (can_buy_base.get(ship.getId()))
 			{
-				if (global_output)
+				//if (global_output)
 					System.out.println("buying a base");
 				purchases.put(ship.getId(), SpacewarPurchaseEnum.BASE);
 			}
