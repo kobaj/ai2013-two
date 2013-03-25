@@ -191,7 +191,7 @@ public class Project3Client extends TeamClient
 					
 					if (recalculate_plan)
 					{
-						// prepare your anus...er, I mean, stack.
+						// prepare your PLEASE WATCH THE LANGUAGE, I mean, stack.
 						ship_plan = new LinkedList<State>();
 						
 						// first set our start state
@@ -313,15 +313,21 @@ public class Project3Client extends TeamClient
 							ArrayList<Position> subgoals = this.independentAStar(local_space, ship.getPosition(), a_star_needed, ship.getRadius(), ship.getId());
 							
 							Position original_goal = subgoals.get(1);
-							
-							// extend the goal for higher velocity
+
+							// set a speed multiplier, increase it if the ship is in a futile chase
 							Vector2D v = space.findShortestDistanceVector(ship.getPosition(), original_goal);
+							double jakobs_magic_multiplier = magnitude_vector / v.getMagnitude();	
+							int toms_miracle_multiplier = 5 ;
+							if(futileChase(ship,space,a_star_needed)){
+								jakobs_magic_multiplier *= toms_miracle_multiplier;
+							}
+							
+							// use the multiplier to fine-tune velocity
 							Vector2D distance_unit = v.getUnitVector();
-							
-							double jakobs_magic_multiplier = magnitude_vector / v.getMagnitude();
-							
 							Position extended_goal = new Position(original_goal.getX() + distance_unit.getXValue() * jakobs_magic_multiplier, original_goal.getY() + distance_unit.getYValue()
 									* jakobs_magic_multiplier);
+							
+
 							
 							// push!!
 							projection = new CircleShadow(3, Color.orange, extended_goal);
@@ -1360,4 +1366,74 @@ public class Project3Client extends TeamClient
 		
 		return copy;
 	}
+	
+	
+	// is the ship in a futile chase?
+	public boolean futileChase( Ship ship, Toroidal2DPhysics space, Position goalPosition){
+
+		// set constants
+		int minIncrease = -10;	// minimum increase in distance to future position of asteroid to register
+		int minDecrease = 5;	// minimum decrease in distance to current position to register
+		int minRadius = 20;		// minimum distance from goal position to register as "our asteroid"
+		double maxAngleDifference = .2 ; // trigonometry
+		
+		for(Asteroid a: space.getAsteroids()){
+
+			// get current radius from ship
+			double currentRadius = space.findShortestDistance(ship.getPosition(), a.getPosition());
+		
+			// check radius from goal to make sure this isn't just some raondom asteroid that happens 
+			// to satisfy the other properties but isnt out goal
+			if(space.findShortestDistance(goalPosition, a.getPosition()) > minRadius){
+				continue;
+			}				
+			
+			// get velocity vector and position for ship
+			Vector2D vShip = ship.getPosition().getTranslationalVelocity();
+			Position futureShipPosition = ship.getPosition().deepCopy();
+			futureShipPosition.setX(futureShipPosition.getX() + vShip.getXValue());
+			futureShipPosition.setY(futureShipPosition.getY() + vShip.getYValue());
+		
+			// get velocity vector and position for asteroid
+			Vector2D vAsteroid = a.getPosition().getTranslationalVelocity();
+			Position futureAsteroidPosition = a.getPosition().deepCopy();
+			futureAsteroidPosition.setX(futureAsteroidPosition.getX() + vAsteroid.getXValue());
+			futureAsteroidPosition.setY(futureAsteroidPosition.getY() + vAsteroid.getYValue());
+		
+			// get velocity angles for both asteroid and ship velocity and compare.
+			// if the ship and asteroid are not moving approximately parallel,
+			// then there isn't really a chase to begin with, let alone a futile one
+			double aAngle = Math.tan(a.getPosition().getyVelocity() / a.getPosition().getxVelocity());
+			double shipAngle = Math.tan(ship.getPosition().getyVelocity() / ship.getPosition().getxVelocity());
+			if( Double.isNaN(aAngle) || Math.abs(aAngle - shipAngle) > maxAngleDifference){
+				continue;
+			}
+
+			// check for min decrease to current position of asteroid
+			double futureShipToCurrentAsteroidRadius = space.findShortestDistance(futureShipPosition, a.getPosition());
+			if(futureShipToCurrentAsteroidRadius  + minDecrease > currentRadius){
+				continue;
+			}	
+			
+			// check for min increase to current position of asteroid
+			double futureShipToFutureAsteroidRadius = space.findShortestDistance(futureShipPosition, futureAsteroidPosition);
+			if(futureShipToFutureAsteroidRadius - minIncrease < currentRadius){
+				continue;
+			}	
+
+			
+			// if we got here without "continue"ing, then there is a futile chase
+			System.out.println("Futile Chase is occuring");
+			System.out.println("Asteroid Angle: " + aAngle + " Ship Angle: " + shipAngle);
+
+			return true ;
+		}
+
+		return false;
+	}
+
+	
+	
+	
+	
 }
