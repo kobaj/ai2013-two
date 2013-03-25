@@ -1345,8 +1345,8 @@ public class Project3Client extends TeamClient
 		// set constants
 		int minIncrease = -10;	// minimum increase in distance to future position of asteroid to register
 		int minDecrease = 5;	// minimum decrease in distance to current position to register
-		int minRadius = 20;		// minimum distance from goal position to register as "our asteroid"
-		double maxAngleDifference = .2 ; // trigonometry
+		int minRadius = 30;		// minimum distance from goal position to register as "our asteroid"
+		double maxAngleDifference = .3 ; // trigonometry
 		
 		for(Asteroid a: space.getAsteroids()){
 
@@ -1394,12 +1394,12 @@ public class Project3Client extends TeamClient
 
 			
 			// if we got here without "continue"ing, then there is a futile chase
-			System.out.println("Futile Chase is occuring");
-			System.out.println("Asteroid Angle: " + aAngle + " Ship Angle: " + shipAngle);
+			System.out.println("Futile Chase is occuring. Asteroid Angle: " + aAngle + " Ship Angle: " + shipAngle);
 
 			return true ;
 		}
-
+		
+		System.out.println("Not futile");
 		return false;
 	}
 
