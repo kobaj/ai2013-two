@@ -113,7 +113,7 @@ public class Project3Client extends TeamClient
 	private final int EMERGENCYENERGY = 300;
 	
 	// some new shadow holders
-	HashMap<UUID, ArrayList<Shadow>> astar_shadows = new HashMap<UUID, ArrayList<Shadow>>();
+	private HashMap<UUID, ArrayList<Shadow>> astar_shadows = new HashMap<UUID, ArrayList<Shadow>>();
 	private Shadow projection;
 	
 	// this has to do with bases
@@ -128,7 +128,11 @@ public class Project3Client extends TeamClient
 	private MapDivision current_division = MapDivision.leftright;
 	
 	// predict movement of moving asteroids
-	ArrayList<Shadow> node_tracking = new ArrayList<Shadow>();
+	private ArrayList<Shadow> node_tracking = new ArrayList<Shadow>();
+	
+	// purchase timeout so it doesn't crash
+	private double purchase_timeout = 0;
+	private final double MAX_TIMEOUT = 100; 
 	
 	@Override
 	public void initialize()
@@ -234,9 +238,6 @@ public class Project3Client extends TeamClient
 						
 						// and push it to our storage
 						object_plans.put(ship.getId(), ship_plan);
-						
-						// last (do not delete me)
-						System.gc();
 					}
 					
 					// and draw
@@ -406,6 +407,9 @@ public class Project3Client extends TeamClient
 			System.out.println(e);
 			e.printStackTrace();
 		}
+		
+		// last (do not delete me)
+		System.gc();
 		
 		return null;
 	}
@@ -1296,6 +1300,14 @@ public class Project3Client extends TeamClient
 	public Map<UUID, SpacewarPurchaseEnum> getTeamPurchases(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects, int availableMoney,
 			Map<SpacewarPurchaseEnum, Integer> purchaseCosts)
 	{
+		if(this.purchase_timeout != 0)
+		{
+			purchase_timeout--;
+			return null;
+		}
+		
+		purchase_timeout = this.MAX_TIMEOUT;
+		
 		HashMap<UUID, SpacewarPurchaseEnum> purchases = new HashMap<UUID, SpacewarPurchaseEnum>();
 		double BASE_BUYING_DISTANCE = 400;
 		
