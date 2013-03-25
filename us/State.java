@@ -39,40 +39,34 @@ public class State {
 	public Position				subjectPosition;
 	
 	// distance from goal necessary to assume it's accomplished
-	final public static int SUBGOAL_DISTANCE = 50;
+	final public static int SUBGOAL_DISTANCE = 30;
 	
 	public enum accomplishStates {accomplished, recalculate_plan, not_accomplished};
 	
 	public accomplishStates isAccomplished(Toroidal2DPhysics space, Ship ship){
 		
-		System.out.println("checking accomplishment");
 		
 		// The goal is to mine an asteroid
 		if(action == possibleTasks.mineAsteroid){
-			System.out.println("mine asteroid");
 				
 			// The asteroid is right where we expect
 			for(Asteroid a : space.getAsteroids()){
 				if(a.getPosition().equals(subjectPosition)){
-					System.out.println("not accomplished");
 					return accomplishStates.not_accomplished;
 				}
 			}
 			
 			// The asteroid is gone because we probably collected it
 			if(space.findShortestDistance(ship.getPosition(), subjectPosition) < SUBGOAL_DISTANCE){
-				System.out.println("accomplished");
 				return accomplishStates.accomplished;
 			}
 			
 			// the asteroid is gone, and there's no evidence we collected it
-			System.out.println("recalculate");
 			return accomplishStates.recalculate_plan;
 			
 		}
 		// The goal is to go to the base
 		else if(action == possibleTasks.goToBase){
-			System.out.println("go to base");
 			
 			// The base no longer belong to us
 			Base theBase = null;
@@ -82,18 +76,15 @@ public class State {
 				}
 			}
 			if(theBase == null){
-				System.out.println("recalculate");
 				return accomplishStates.recalculate_plan;			
 			}
 			
 			// We are within range of the base
 			if(space.findShortestDistance(ship.getPosition(), subjectPosition) < SUBGOAL_DISTANCE){
-				System.out.println("accomplished");
 				return accomplishStates.accomplished;
 			}
 			
 			// the base belong to us be we are not there yet
-			System.out.println("not accomplished");
 			return accomplishStates.not_accomplished;
 			
 		}
@@ -128,7 +119,6 @@ public class State {
 	}
 	
 	public State(Ship ship, Toroidal2DPhysics space){
-		System.out.println("making new start state");
 		this.space = space ;
 		this.shipsDestroyed = new ArrayList<Ship>();
 		this.asteroidsGone = new ArrayList<Asteroid>();
@@ -157,18 +147,14 @@ public class State {
 		this.distanceToBeacon = prev.distanceToBeacon;
 		this.action = action;
 		this.subject = subject;
-		try{
-			if(SpacewarObject.class.isAssignableFrom(subject.getClass())){
-				this.subjectPosition = ((SpacewarObject)subject).getPosition();
-			}else if(subject.getClass() == Position.class){
-				this.subjectPosition = (Position) subject ;
-			}else{
-				System.out.println("something is wrong");
-			}
-		}catch(Exception e){
-			System.out.println(e);
-			System.exit(0);
+		if(SpacewarObject.class.isAssignableFrom(subject.getClass())){
+			this.subjectPosition = ((SpacewarObject)subject).getPosition();
+		}else if(subject.getClass() == Position.class){
+			this.subjectPosition = (Position) subject ;
+		}else{
+			System.out.println("something is wrong");
 		}
+
 		
 		if(action == possibleTasks.mineAsteroid){
 			Asteroid asteroid_subject = (Asteroid) subject;
