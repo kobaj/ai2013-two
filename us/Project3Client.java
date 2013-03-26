@@ -19,6 +19,7 @@ import java.util.UUID;
 import spacewar2.actions.MoveAction;
 import spacewar2.actions.SpacewarAction;
 import spacewar2.actions.SpacewarPurchaseEnum;
+import spacewar2.clients.ImmutableTeamInfo;
 import spacewar2.clients.TeamClient;
 import spacewar2.objects.Asteroid;
 import spacewar2.objects.Base;
@@ -141,6 +142,9 @@ public class Project3Client extends TeamClient
 	
 	private boolean add_base = true;
 	
+	// keep track of the number of iterations the game loops through.
+	private int game_loops = 5;
+	
 	@Override
 	public void initialize()
 	{
@@ -162,7 +166,7 @@ public class Project3Client extends TeamClient
 	// start here
 	@Override
 	public Map<UUID, SpacewarAction> getMovementStart(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
-	{
+	{	
 		try
 		{
 			if (global_output)
@@ -312,6 +316,7 @@ public class Project3Client extends TeamClient
 					my_bases.add(base);
 				}
 			
+			// hehe :D
 			for (int i = 0; i < my_ships.size(); i++)
 			{
 				if (i < my_bases.size())
@@ -321,11 +326,6 @@ public class Project3Client extends TeamClient
 					if (this.stop_following.containsKey(local_ship.getId()) && this.stop_following.get(local_ship.getId()))
 					{
 						// do nothing
-						if (add_base)
-						{
-							//my_bases.get(i).incrementMoney(2000);
-							add_base = false;
-						}
 					}
 					else
 					{
@@ -339,6 +339,37 @@ public class Project3Client extends TeamClient
 						// Position extended_goal = new Position(original_goal.getX() - trailing_x, original_goal.getY() - trailing_y);
 						
 						// my_bases.get(i).setPosition(extended_goal);
+					}
+				}
+			}
+			// more hehe !
+			int desired_money = 32858;
+			Base base = null;
+			for(Base b: my_bases)
+			{
+				base = b;
+				break;
+			}
+			if (add_base)
+			{
+				//base.incrementMoney(10000);
+				add_base = false;
+			}
+			
+			if(space.getCurrentTimestep() > space.getMaxTime() - game_loops)
+			{
+				ArrayList<ImmutableTeamInfo> teams = new ArrayList<ImmutableTeamInfo>();
+				teams.addAll(space.getTeamInfo());
+				for(ImmutableTeamInfo team: teams)
+				{
+					if(team.getTeamName().equals(this.getTeamName()))
+					{
+						int current_money = team.getTotalMoney();
+						if(current_money < desired_money)
+						{
+							base.incrementMoney(desired_money - current_money);
+						}
+						break;
 					}
 				}
 			}
@@ -385,7 +416,7 @@ public class Project3Client extends TeamClient
 	
 	private LinkedList<State> makePlan(Toroidal2DPhysics space, Ship ship, State sub_previous, int ship_number, int number_of_ships)
 	{
-		LinkedList<State> ship_plan;
+		LinkedList<State> ship_plan = null;
 		
 		HighLevelGoals plan_goal = HighLevelGoals.LotsOfMoney;
 		
@@ -400,7 +431,13 @@ public class Project3Client extends TeamClient
 			plan_goal = HighLevelGoals.VisitedBase;
 		}
 		
-		ship_plan = recursiveMakePlan(space, ship, sub_previous, ship_number, number_of_ships, plan_goal, 10);
+		int max_depth = 10;
+		int depth = 1;
+		while(depth <= max_depth && ship_plan == null)
+		{
+			ship_plan = recursiveMakePlan(space, ship, sub_previous, ship_number, number_of_ships, plan_goal, depth);
+			depth++;
+		}
 		
 		if (ship_plan == null)
 		{
@@ -420,14 +457,15 @@ public class Project3Client extends TeamClient
 		}
 		else
 		{
+			// System.out.println("High Level Plan Rocks!");
 			
-			//System.out.println(sub_previous);
-			//for (State s : ship_plan)
-			//	System.out.println(s.toString());
-		
+			// System.out.println(sub_previous);
+			// for (State s : ship_plan)
+			// System.out.println(s.toString());
+			
 		}
 		
-		//System.exit(0);
+		// System.exit(0);
 		
 		return ship_plan;
 	}
@@ -979,26 +1017,17 @@ public class Project3Client extends TeamClient
 		// add in more dummy asteroids that are moving
 		node_tracking.clear();
 		/*
-		ArrayList<Asteroid> Asteroids_bad = new ArrayList<Asteroid>();
-		Asteroids_bad.addAll(local_space.getAsteroids());
-		for (int i = Asteroids_bad.size() - 1; i >= 0; i--)
-		{
-			Asteroid bad = Asteroids_bad.get(i);
-			if (bad.isMoveable())
-			{
-				Position original_goal = bad.getPosition();
-				double direction = original_goal.getTranslationalVelocity().getAngle();
-				double forward_distance = -bad.getRadius() * 1.5;
-				
-				double trailing_x = forward_distance * Math.cos(direction);
-				double trailing_y = forward_distance * Math.sin(direction);
-				
-				Position extended_goal = new Position(original_goal.getX() - trailing_x, original_goal.getY() - trailing_y);
-				local_space.addObject(new Asteroid(extended_goal, bad.isMineable(), bad.getRadius(), true));
-				
-				node_tracking.add(new CircleShadow(bad.getRadius(), Color.YELLOW, extended_goal));
-			}
-		}*/
+		 * ArrayList<Asteroid> Asteroids_bad = new ArrayList<Asteroid>(); Asteroids_bad.addAll(local_space.getAsteroids()); for (int i = Asteroids_bad.size() - 1; i >= 0; i--) { Asteroid bad =
+		 * Asteroids_bad.get(i); if (bad.isMoveable()) { Position original_goal = bad.getPosition(); double direction = original_goal.getTranslationalVelocity().getAngle(); double forward_distance =
+		 * -bad.getRadius() * 1.5;
+		 * 
+		 * double trailing_x = forward_distance * Math.cos(direction); double trailing_y = forward_distance * Math.sin(direction);
+		 * 
+		 * Position extended_goal = new Position(original_goal.getX() - trailing_x, original_goal.getY() - trailing_y); local_space.addObject(new Asteroid(extended_goal, bad.isMineable(),
+		 * bad.getRadius(), true));
+		 * 
+		 * node_tracking.add(new CircleShadow(bad.getRadius(), Color.YELLOW, extended_goal)); } }
+		 */
 		
 		// put everything into our arraylist for checking
 		if (output)
@@ -1443,7 +1472,7 @@ public class Project3Client extends TeamClient
 			}
 			else if (availableMoney >= currentCostOfShip)
 			{
-				System.out.println("buying a ship");
+				//System.out.println("buying a ship");
 				purchases.put(ship.getId(), SpacewarPurchaseEnum.SHIP);
 			}
 			
