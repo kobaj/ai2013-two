@@ -132,7 +132,14 @@ public class Project3Client extends TeamClient
 	
 	// purchase timeout so it doesn't crash
 	private double purchase_timeout = 0;
-	private final double MAX_TIMEOUT = 100; 
+	private final double MAX_TIMEOUT = 100;
+	
+	private enum HighLevelGoals
+	{
+		LotsOfMoney, RefilledEnergy, VisitedBase, None
+	};
+	
+	private boolean add_base = true;
 	
 	@Override
 	public void initialize()
@@ -196,7 +203,7 @@ public class Project3Client extends TeamClient
 					if (recalculate_plan)
 					{
 						// prepare your PLEASE WATCH THE LANGUAGE, I mean, stack.
-						ship_plan = new LinkedList<State>();
+						// ship_plan = new LinkedList<State>();
 						
 						// first set our start state
 						State start = new State(ship, local_space);
@@ -206,35 +213,7 @@ public class Project3Client extends TeamClient
 						// State next = new State(start, possibleTasks.mineAsteroid, original_goal);
 						// ship_plan.add(next);
 						
-						State sub_previous = start;
-						for (int i = 1; i <= 10; i++)
-						{
-							State sub_next = null;
-							
-							if (sub_previous.closest_mineable_asteroid == null)
-								System.out.println("null found in plan");
-							
-							if (sub_previous.closest_mineable_asteroid == null || sub_previous.energy < this.ENERGYCUTOFF || sub_previous.money > this.MONEYCUTOFF || i % 5 == 0)
-							{
-								if (sub_previous.action == possibleTasks.goToBase)
-									break;
-								
-								sub_next = new State(sub_previous, possibleTasks.goToBase, this.getClosestBase(space, sub_previous.position));
-							}
-							else
-							{
-								Asteroid choice = this.getMapDividedClosestAsteroid(local_space, sub_previous, ship_number, number_of_ships);
-								
-								if (choice != null)
-									sub_next = new State(sub_previous, possibleTasks.mineAsteroid, choice);
-							}
-							
-							if (sub_next != null)
-							{
-								ship_plan.addLast(sub_next);
-								sub_previous = sub_next;
-							}
-						}
+						ship_plan = makePlan(space, ship, start, ship_number, number_of_ships);
 						
 						// and push it to our storage
 						object_plans.put(ship.getId(), ship_plan);
@@ -255,31 +234,17 @@ public class Project3Client extends TeamClient
 						
 						Position a_star_needed = null;
 						
-						// short circuit
 						if (ship.getEnergy() < this.EMERGENCYENERGY)
 						{
-							Base closest_base = this.getClosestBase(space, ship.getPosition());
-							Beacon closest_beacon = this.getClosestBeacon(space, ship);
-							
-							double base_distance = space.findShortestDistance(closest_base.getPosition(), ship.getPosition());
-							double beacon_distance = space.findShortestDistance(closest_beacon.getPosition(), ship.getPosition());
-							
-							Position closest = closest_base.getPosition();
-							this.stop_following.put(ship.getId(), true);
-							
-							if (beacon_distance < base_distance)
-							{
-								closest = closest_beacon.getPosition();
-								this.stop_following.put(ship.getId(), false);
-							}
-							
-							a_star_needed = closest;
+							// recalculate plan
+							ship_plan.clear();
+							object_plans.put(ship.getId(), ship_plan);
 						}
 						else if (ship.getMoney() > this.EMERGENCYMONEY)
 						{
-							this.stop_following.put(ship.getId(), true);
-							
-							a_star_needed = this.getClosestBase(space, ship.getPosition()).getPosition();
+							// recalculate plan
+							ship_plan.clear();
+							object_plans.put(ship.getId(), ship_plan);
 						}
 						else
 						{
@@ -314,12 +279,13 @@ public class Project3Client extends TeamClient
 							ArrayList<Position> subgoals = this.independentAStar(local_space, ship.getPosition(), a_star_needed, ship.getRadius(), ship.getId());
 							
 							Position original_goal = subgoals.get(1);
-
+							
 							// set a speed multiplier, increase it if the ship is in a futile chase
 							Vector2D v = space.findShortestDistanceVector(ship.getPosition(), original_goal);
-							double jakobs_magic_multiplier = magnitude_vector / v.getMagnitude();	
-							int toms_miracle_multiplier = 5 ;
-							if(futileChase(ship,space,a_star_needed)){
+							double jakobs_magic_multiplier = magnitude_vector / v.getMagnitude();
+							int toms_miracle_multiplier = 5;
+							if (futileChase(ship, space, a_star_needed))
+							{
 								jakobs_magic_multiplier *= toms_miracle_multiplier;
 							}
 							
@@ -327,8 +293,6 @@ public class Project3Client extends TeamClient
 							Vector2D distance_unit = v.getUnitVector();
 							Position extended_goal = new Position(original_goal.getX() + distance_unit.getXValue() * jakobs_magic_multiplier, original_goal.getY() + distance_unit.getYValue()
 									* jakobs_magic_multiplier);
-							
-
 							
 							// push!!
 							projection = new CircleShadow(3, Color.orange, extended_goal);
@@ -357,6 +321,11 @@ public class Project3Client extends TeamClient
 					if (this.stop_following.containsKey(local_ship.getId()) && this.stop_following.get(local_ship.getId()))
 					{
 						// do nothing
+						if (add_base)
+						{
+							//my_bases.get(i).incrementMoney(2000);
+							add_base = false;
+						}
 					}
 					else
 					{
@@ -390,12 +359,12 @@ public class Project3Client extends TeamClient
 			}
 			
 			shadows.add(projection);
-			for(Shadow s: node_tracking)
+			for (Shadow s : node_tracking)
 				shadows.add(s);
 			for (Ship ship : my_ships)
-				if(astar_shadows.containsKey(ship.getId()))
-				for (Shadow shad : astar_shadows.get(ship.getId()))
-					shadows.add(shad);
+				if (astar_shadows.containsKey(ship.getId()))
+					for (Shadow shad : astar_shadows.get(ship.getId()))
+						shadows.add(shad);
 			
 			if (global_output)
 				System.out.println("TimeSpent in Client: " + (System.currentTimeMillis() - time));
@@ -410,6 +379,134 @@ public class Project3Client extends TeamClient
 		
 		// last (do not delete me)
 		System.gc();
+		
+		return null;
+	}
+	
+	private LinkedList<State> makePlan(Toroidal2DPhysics space, Ship ship, State sub_previous, int ship_number, int number_of_ships)
+	{
+		LinkedList<State> ship_plan;
+		
+		HighLevelGoals plan_goal = HighLevelGoals.LotsOfMoney;
+		
+		// see what our high level goal will be
+		if (ship.getEnergy() < this.EMERGENCYENERGY)
+		{
+			plan_goal = HighLevelGoals.RefilledEnergy;
+		}
+		
+		if (ship.getMoney() > this.EMERGENCYMONEY)
+		{
+			plan_goal = HighLevelGoals.VisitedBase;
+		}
+		
+		ship_plan = recursiveMakePlan(space, ship, sub_previous, ship_number, number_of_ships, plan_goal, 10);
+		
+		if (ship_plan == null)
+		{
+			// plan couldn't be found
+			ship_plan = new LinkedList<State>();
+			
+			Asteroid choice = this.getMapDividedClosestAsteroid(space, sub_previous, ship_number, number_of_ships);
+			if (choice != null)
+			{
+				ship_plan.add(new State(sub_previous, possibleTasks.mineAsteroid, choice));
+			}
+			else
+			{
+				ship_plan.add(new State(sub_previous, possibleTasks.goToBase, this.getClosestBase(space, ship.getPosition())));
+			}
+			
+		}
+		else
+		{
+			
+			//System.out.println(sub_previous);
+			//for (State s : ship_plan)
+			//	System.out.println(s.toString());
+		
+		}
+		
+		//System.exit(0);
+		
+		return ship_plan;
+	}
+	
+	private LinkedList<State> recursiveMakePlan(Toroidal2DPhysics space, Ship ship, State sub_previous, int ship_number, int number_of_ships, HighLevelGoals plan_goal, int depth_limit)
+	{
+		// base case
+		// see if our goal is met
+		if (plan_goal == HighLevelGoals.LotsOfMoney && sub_previous.base_money > 500)
+		{
+			LinkedList<State> tail = new LinkedList<State>();
+			tail.add(sub_previous);
+			return tail;
+		}
+		
+		else if (plan_goal == HighLevelGoals.VisitedBase && sub_previous.action == State.possibleTasks.goToBase)
+		{
+			LinkedList<State> tail = new LinkedList<State>();
+			tail.add(sub_previous);
+			return tail;
+		}
+		
+		else if (plan_goal == HighLevelGoals.RefilledEnergy && sub_previous.action == State.possibleTasks.getBeacon)
+		{
+			LinkedList<State> tail = new LinkedList<State>();
+			tail.add(sub_previous);
+			return tail;
+		}
+		
+		// and just so we dont go rampant
+		else if (depth_limit <= 0)
+		{
+			return null;
+		}
+		
+		// recurse
+		LinkedList<State> children = null;
+		State sub_next;
+		
+		// first check if we can catch a close node
+		Asteroid choice = this.getMapDividedClosestAsteroid(space, sub_previous, ship_number, number_of_ships);
+		
+		if (choice != null)
+		{
+			sub_next = new State(sub_previous, possibleTasks.mineAsteroid, choice);
+			if (State.isPreconditionsSatisfied(space, ship, sub_previous, sub_next))
+			{
+				children = recursiveMakePlan(space, ship, sub_next, ship_number, number_of_ships, plan_goal, depth_limit - 1);
+				if (children != null)
+				{
+					children.addFirst(sub_next);
+					return children;
+				}
+			}
+		}
+		
+		// try to catch a base
+		sub_next = new State(sub_previous, possibleTasks.goToBase, this.getClosestBase(space, ship.getPosition()));
+		if (State.isPreconditionsSatisfied(space, ship, sub_previous, sub_next))
+		{
+			children = recursiveMakePlan(space, ship, sub_next, ship_number, number_of_ships, plan_goal, depth_limit - 1);
+			if (children != null)
+			{
+				children.addFirst(sub_next);
+				return children;
+			}
+		}
+		
+		// all else fails lets get a beacon
+		sub_next = new State(sub_previous, possibleTasks.getBeacon, this.getClosestBeacon(space, ship.getPosition()));
+		if (State.isPreconditionsSatisfied(space, ship, sub_previous, sub_next))
+		{
+			children = recursiveMakePlan(space, ship, sub_next, ship_number, number_of_ships, plan_goal, depth_limit - 1);
+			if (children != null)
+			{
+				children.addFirst(sub_next);
+				return children;
+			}
+		}
 		
 		return null;
 	}
@@ -879,28 +976,29 @@ public class Project3Client extends TeamClient
 			if (Ships.get(i).getTeamName().equals(getTeamName()))
 				local_space.removeObject(Ships.get(i));
 		
-		//add in more dummy asteroids that are moving
+		// add in more dummy asteroids that are moving
 		node_tracking.clear();
+		/*
 		ArrayList<Asteroid> Asteroids_bad = new ArrayList<Asteroid>();
 		Asteroids_bad.addAll(local_space.getAsteroids());
-		for(int i = Asteroids_bad.size() - 1; i >=0; i--)
+		for (int i = Asteroids_bad.size() - 1; i >= 0; i--)
 		{
 			Asteroid bad = Asteroids_bad.get(i);
-			if(bad.isMoveable())
+			if (bad.isMoveable())
 			{
 				Position original_goal = bad.getPosition();
-				double direction =original_goal.getTranslationalVelocity().getAngle();
+				double direction = original_goal.getTranslationalVelocity().getAngle();
 				double forward_distance = -bad.getRadius() * 1.5;
-		
+				
 				double trailing_x = forward_distance * Math.cos(direction);
 				double trailing_y = forward_distance * Math.sin(direction);
-		
+				
 				Position extended_goal = new Position(original_goal.getX() - trailing_x, original_goal.getY() - trailing_y);
 				local_space.addObject(new Asteroid(extended_goal, bad.isMineable(), bad.getRadius(), true));
 				
 				node_tracking.add(new CircleShadow(bad.getRadius(), Color.YELLOW, extended_goal));
 			}
-		}
+		}*/
 		
 		// put everything into our arraylist for checking
 		if (output)
@@ -1178,7 +1276,7 @@ public class Project3Client extends TeamClient
 		return max_asteroid;
 	}
 	
-	private Beacon getClosestBeacon(Toroidal2DPhysics space, Ship ship)
+	private Beacon getClosestBeacon(Toroidal2DPhysics space, Position ship)
 	{
 		Set<Beacon> beacons = space.getBeacons();
 		
@@ -1186,7 +1284,7 @@ public class Project3Client extends TeamClient
 		Beacon min_beacon = null;
 		for (Beacon b : beacons)
 		{
-			double distance = space.findShortestDistance(b.getPosition(), ship.getPosition());
+			double distance = space.findShortestDistance(b.getPosition(), ship);
 			if (distance < min)
 			{
 				min_beacon = b;
@@ -1300,7 +1398,7 @@ public class Project3Client extends TeamClient
 	public Map<UUID, SpacewarPurchaseEnum> getTeamPurchases(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects, int availableMoney,
 			Map<SpacewarPurchaseEnum, Integer> purchaseCosts)
 	{
-		if(this.purchase_timeout != 0)
+		if (this.purchase_timeout != 0)
 		{
 			purchase_timeout--;
 			return null;
@@ -1351,8 +1449,8 @@ public class Project3Client extends TeamClient
 			
 			if (can_buy_base.get(ship.getId()))
 			{
-				//if (global_output)
-					System.out.println("buying a base");
+				// if (global_output)
+				System.out.println("buying a base");
 				purchases.put(ship.getId(), SpacewarPurchaseEnum.BASE);
 			}
 		}
@@ -1379,73 +1477,73 @@ public class Project3Client extends TeamClient
 		return copy;
 	}
 	
-	
 	// is the ship in a futile chase?
-	public boolean futileChase( Ship ship, Toroidal2DPhysics space, Position goalPosition){
-
-		// set constants
-		int minIncrease = -10;	// minimum increase in distance to future position of asteroid to register
-		int minDecrease = 5;	// minimum decrease in distance to current position to register
-		int minRadius = 30;		// minimum distance from goal position to register as "our asteroid"
-		double maxAngleDifference = .3 ; // trigonometry
+	public boolean futileChase(Ship ship, Toroidal2DPhysics space, Position goalPosition)
+	{
 		
-		for(Asteroid a: space.getAsteroids()){
-
+		// set constants
+		int minIncrease = -10; // minimum increase in distance to future position of asteroid to register
+		int minDecrease = 5; // minimum decrease in distance to current position to register
+		int minRadius = 30; // minimum distance from goal position to register as "our asteroid"
+		double maxAngleDifference = .3; // trigonometry
+		
+		for (Asteroid a : space.getAsteroids())
+		{
+			
 			// get current radius from ship
 			double currentRadius = space.findShortestDistance(ship.getPosition(), a.getPosition());
-		
-			// check radius from goal to make sure this isn't just some raondom asteroid that happens 
+			
+			// check radius from goal to make sure this isn't just some raondom asteroid that happens
 			// to satisfy the other properties but isnt out goal
-			if(space.findShortestDistance(goalPosition, a.getPosition()) > minRadius){
+			if (space.findShortestDistance(goalPosition, a.getPosition()) > minRadius)
+			{
 				continue;
-			}				
+			}
 			
 			// get velocity vector and position for ship
 			Vector2D vShip = ship.getPosition().getTranslationalVelocity();
 			Position futureShipPosition = ship.getPosition().deepCopy();
 			futureShipPosition.setX(futureShipPosition.getX() + vShip.getXValue());
 			futureShipPosition.setY(futureShipPosition.getY() + vShip.getYValue());
-		
+			
 			// get velocity vector and position for asteroid
 			Vector2D vAsteroid = a.getPosition().getTranslationalVelocity();
 			Position futureAsteroidPosition = a.getPosition().deepCopy();
 			futureAsteroidPosition.setX(futureAsteroidPosition.getX() + vAsteroid.getXValue());
 			futureAsteroidPosition.setY(futureAsteroidPosition.getY() + vAsteroid.getYValue());
-		
+			
 			// get velocity angles for both asteroid and ship velocity and compare.
 			// if the ship and asteroid are not moving approximately parallel,
 			// then there isn't really a chase to begin with, let alone a futile one
 			double aAngle = Math.tan(a.getPosition().getyVelocity() / a.getPosition().getxVelocity());
 			double shipAngle = Math.tan(ship.getPosition().getyVelocity() / ship.getPosition().getxVelocity());
-			if( Double.isNaN(aAngle) || Math.abs(aAngle - shipAngle) > maxAngleDifference){
+			if (Double.isNaN(aAngle) || Math.abs(aAngle - shipAngle) > maxAngleDifference)
+			{
 				continue;
 			}
-
+			
 			// check for min decrease to current position of asteroid
 			double futureShipToCurrentAsteroidRadius = space.findShortestDistance(futureShipPosition, a.getPosition());
-			if(futureShipToCurrentAsteroidRadius  + minDecrease > currentRadius){
+			if (futureShipToCurrentAsteroidRadius + minDecrease > currentRadius)
+			{
 				continue;
-			}	
+			}
 			
 			// check for min increase to current position of asteroid
 			double futureShipToFutureAsteroidRadius = space.findShortestDistance(futureShipPosition, futureAsteroidPosition);
-			if(futureShipToFutureAsteroidRadius - minIncrease < currentRadius){
+			if (futureShipToFutureAsteroidRadius - minIncrease < currentRadius)
+			{
 				continue;
-			}	
-
+			}
 			
 			// if we got here without "continue"ing, then there is a futile chase
 			System.out.println("Futile Chase is occuring. Asteroid Angle: " + aAngle + " Ship Angle: " + shipAngle);
-
-			return true ;
+			
+			return true;
 		}
 		
-		System.out.println("Not futile");
+		// System.out.println("Not futile");
 		return false;
 	}
-
-	
-	
-	
 	
 }

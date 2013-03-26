@@ -15,15 +15,17 @@ import spacewar2.utilities.Position;
 
 public class State {
 
-	public enum possibleTasks {mineAsteroid, moveToPosition, getBeacon, destroyShip, goToBase};
+	public enum possibleTasks {mineAsteroid, moveToPosition, getBeacon, destroyShip, goToBase, InitialTask};
 	
 	public Toroidal2DPhysics	space;
 	public ArrayList<Ship>		shipsDestroyed;
 	public ArrayList<Asteroid>	asteroidsGone;
 	public ArrayList<Beacon>	beaconsGone;
 	public Position				position;
-	public int 					money ;
-	public double				energy;
+	public int					base_money ;
+	public int 					ship_money ;
+	public double				move_energy;
+	public double 				gain_energy;
 	public double 				distanceToBase;
 	public double				distanceToAsteroid;
 	public double				distanceToBeacon;
@@ -42,6 +44,46 @@ public class State {
 	final public static int SUBGOAL_DISTANCE = 30;
 	
 	public enum accomplishStates {accomplished, recalculate_plan, not_accomplished};
+	
+	public static boolean isPreconditionsSatisfied(Toroidal2DPhysics space, Ship ship, State last_state, State possible_state)
+	{
+		State.possibleTasks action = possible_state.action;
+		
+		int energy_limit = 300;
+		int asteroid_money_requirement = 50;
+		int ship_return_base_money_requirement = 300;
+		
+		//list of all simple pre-conditions.
+		if(action == possibleTasks.mineAsteroid)
+		{
+			double net_energy = possible_state.move_energy + possible_state.gain_energy;
+			
+			if((net_energy > energy_limit) && //
+				//	 (((Asteroid)possible_state.subject).getMoney() > asteroid_money_requirement) && //
+					   (true)) //
+						return true;
+		}
+		else if(action == possibleTasks.goToBase)
+		{
+			double net_energy = last_state.gain_energy + last_state.move_energy + possible_state.move_energy;
+			
+			if((net_energy > 0) && //
+					(last_state.action != possibleTasks.goToBase) && //
+					// (possible_state.ship_money > ship_return_base_money_requirement) && //
+					   (true)) //
+					    return true;
+		}
+		else if(action == possibleTasks.getBeacon)
+		{
+			double net_energy = last_state.gain_energy + last_state.move_energy + possible_state.move_energy;
+			
+			if((net_energy > 0) && //
+					   (true)) //
+						return true;			
+		}
+		
+		return false;
+	}
 	
 	public accomplishStates isAccomplished(Toroidal2DPhysics space, Ship ship){
 		
@@ -65,6 +107,24 @@ public class State {
 			return accomplishStates.recalculate_plan;
 			
 		}
+		else if(action == possibleTasks.getBeacon){
+				
+				// The beacon is right where we expect
+				for(Beacon b : space.getBeacons()){
+					if(b.getPosition().equals(subjectPosition)){
+						return accomplishStates.not_accomplished;
+					}
+				}
+				
+				// The beacon is gone because we probably collected it
+				if(space.findShortestDistance(ship.getPosition(), subjectPosition) < SUBGOAL_DISTANCE){
+					return accomplishStates.accomplished;
+				}
+				
+				// the beacon is gone, and there's no evidence we collected it
+				return accomplishStates.recalculate_plan;
+				
+			}
 		// The goal is to go to the base
 		else if(action == possibleTasks.goToBase){
 			
@@ -110,11 +170,25 @@ public class State {
 		s 			+="asteroidsGone: " + asteroidsGone.size() + "\n";
 		s 			+="beaconsGone: " + beaconsGone.size() + "\n";
 		s 			+="position: (" + position.getX() + "," + position.getY() +")\n";
-		s 			+="money: " + money + "\n";
-		s 			+="energy: " + energy + "\n";
+		s 			+="shipmoney: " + ship_money + "\n";
+		s 			+="moveenergy: " + move_energy + "\n";
 		s 			+="distanceToBase: " + distanceToBase + "\n";
 		s 			+="distanceToAsteroid: " + distanceToAsteroid + "\n";
-		s 			+="distanceToBeacon: " + distanceToBeacon + "\n\n";
+		s 			+="distanceToBeacon: " + distanceToBeacon + "\n";
+		
+		if(action == possibleTasks.mineAsteroid)
+			s += "Action: mineAsteroid"+ "\n\n";
+		else if(action == possibleTasks.destroyShip)
+			s += "Action: destroyShip"+ "\n\n";
+		else if(action == possibleTasks.goToBase)
+			s += "Action: goToBase"+ "\n\n";
+		else if(action == possibleTasks.getBeacon)
+			s += "Action: getBeacon"+ "\n\n";
+		else if(action == possibleTasks.moveToPosition)
+			s += "Action: moveToPosition"+ "\n\n";
+		else if(action == possibleTasks.InitialTask)
+			s += "action: initialTask" + "\n\n";
+		
 		return s;
 	}
 	
@@ -124,9 +198,10 @@ public class State {
 		this.asteroidsGone = new ArrayList<Asteroid>();
 		this.beaconsGone = new ArrayList<Beacon>();
 		this.position = ship.getPosition();
-		this.money = ship.getMoney();
-		this.energy = ship.getEnergy();
+		this.ship_money = ship.getMoney();
+		this.move_energy = ship.getEnergy();
 		this.teamName = ship.getTeamName();
+		this.action = possibleTasks.InitialTask;
 		updateNearestAsteroid();
 		updateNearestBase();
 		updateNearestBeacon();
@@ -140,13 +215,16 @@ public class State {
 		this.asteroidsGone = new ArrayList<Asteroid>(prev.asteroidsGone);
 		this.beaconsGone = new ArrayList<Beacon>(prev.beaconsGone);
 		this.position = prev.position;
-		this.money = prev.money;
-		this.energy = prev.energy;
+		this.ship_money = prev.ship_money;
+		this.base_money = prev.base_money;
+		this.move_energy = prev.move_energy;
+		this.gain_energy = prev.gain_energy;
 		this.distanceToAsteroid = prev.distanceToAsteroid;
 		this.distanceToBase = prev.distanceToBase;
 		this.distanceToBeacon = prev.distanceToBeacon;
 		this.action = action;
 		this.subject = subject;
+		
 		if(SpacewarObject.class.isAssignableFrom(subject.getClass())){
 			this.subjectPosition = ((SpacewarObject)subject).getPosition();
 		}else if(subject.getClass() == Position.class){
@@ -159,9 +237,9 @@ public class State {
 		if(action == possibleTasks.mineAsteroid){
 			Asteroid asteroid_subject = (Asteroid) subject;
 			asteroidsGone.add(asteroid_subject);
-			updateEnergy(asteroid_subject.getPosition());//IT IS VERY IMPORTANT THAT THIS STAY ABOVE THE UPDATING OF POSITOIN
+			move_energy += updateEnergy(asteroid_subject.getPosition());//IT IS VERY IMPORTANT THAT THIS STAY ABOVE THE UPDATING OF POSITOIN
 			position = asteroid_subject.getPosition();
-			money += ((Asteroid)subject).getMoney();
+			ship_money += ((Asteroid)subject).getMoney();
 			updateNearestAsteroid();
 			updateNearestBase();
 			updateNearestBeacon();
@@ -171,9 +249,10 @@ public class State {
 			Beacon beacon_subject = (Beacon) subject;
 			
 			beaconsGone.add(beacon_subject);
-			updateEnergy(beacon_subject.getPosition());//IT IS VERY IMPORTANT THAT THIS STAY ABOVE THE UPDATING OF POSITOIN
+			move_energy += updateEnergy(beacon_subject.getPosition());//IT IS VERY IMPORTANT THAT THIS STAY ABOVE THE UPDATING OF POSITOIN
+			gain_energy += Beacon.BEACON_ENERGY_BOOST;
+			gain_energy = Math.min(gain_energy, Ship.SHIP_MAX_ENERGY);
 			position = beacon_subject.getPosition();
-			energy += Beacon.BEACON_ENERGY_BOOST;
 			updateNearestAsteroid();
 			updateNearestBase();
 			updateNearestBeacon();
@@ -183,13 +262,13 @@ public class State {
 			Ship ship_subject = (Ship) subject;
 			
 			shipsDestroyed.add(ship_subject);
-			money += (ship_subject).getMoney();
-			energy -= ((ship_subject).getEnergy() / -Missile.MISSILE_DAMAGE ) * -Missile.MISSILE_COST; // cost of the number of bullets needed to kill
+			ship_money += (ship_subject).getMoney();
+			move_energy -= ((ship_subject).getEnergy() / -Missile.MISSILE_DAMAGE ) * -Missile.MISSILE_COST; // cost of the number of bullets needed to kill
 		}
 		
 		else if(action == possibleTasks.moveToPosition){
 			Position position_subject = (Position) subject;
-			updateEnergy(position_subject);
+			move_energy += updateEnergy(position_subject);//IT IS VERY IMPORTANT THAT THIS STAY ABOVE THE UPDATING OF POSITOIN
 			position = position_subject;
 			updateNearestAsteroid();
 			updateNearestBase();
@@ -197,8 +276,12 @@ public class State {
 		}
 		else if(action == possibleTasks.goToBase){
 			Base base_subject = (Base) subject;
-			energy = Ship.SHIP_MAX_ENERGY;
+			move_energy += updateEnergy(base_subject.getPosition());//IT IS VERY IMPORTANT THAT THIS STAY ABOVE THE UPDATING OF POSITOIN
+			gain_energy += (base_subject.getEnergy() / 2);
+			gain_energy = Math.min(gain_energy, Ship.SHIP_MAX_ENERGY);
 			position = base_subject.getPosition();
+			base_money += ship_money;
+			ship_money = 0;
 			updateNearestAsteroid();
 			updateNearestBase();
 			updateNearestBeacon();
@@ -262,12 +345,12 @@ public class State {
 
 	}
 	
-	private void updateEnergy(Position dest){
+	private double updateEnergy(Position dest){
 		int mpg = 5; // this is awesome
 		
 		double distance = space.findShortestDistance(position, dest);
 		double energyUsed = mpg * distance ;
-		energy -= energyUsed ;
+		return -energyUsed;
 	}
 	
 	
