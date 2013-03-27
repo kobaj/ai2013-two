@@ -20,11 +20,18 @@ class Node
 	public double root_to_n_distance = 0;
 	public Node parent;
 	
-	// fairly self explanitory.
-	// a node that can be used with the adjacency matrix
-	// stores its position, its position in the matrix
-	// its type (start, goal, regular) and the hueristic distance to the goal
-	// its distance to all other nodes can be found in the adjancey matrix.
+	/**
+	 * fairly self explanitory.
+	 * a node that can be used with the adjacency matrix
+	 * stores its position, its position in the matrix
+	 * its type (start, goal, regular) and the hueristic distance to the goal
+	 * its distance to all other nodes can be found in the adjancey matrix.
+	 * 
+	 * @param position the position of a node
+	 * @param matrix_id the id of the node in the matrix
+	 * @param node_type the type of node (goal or whatever)
+	 * @param hueristic_distance and the guessed distance to a goal
+	 */
 	public Node(Position position, int matrix_id, NodeType node_type, double hueristic_distance)
 	{
 		this.position = position;
@@ -33,11 +40,21 @@ class Node
 		this.hueristic_distance = hueristic_distance;
 	}
 	
+	/**
+	 * calculate the f(n)
+	 * 
+	 * @return
+	 */
 	public double fn()
 	{
 		return hueristic_distance + root_to_n_distance;
 	}
 	
+	/**
+	 * recursively find the path to root using children and parents
+	 * 
+	 * @return
+	 */
 	public ArrayList<Node> getPathToRoot()
 	{
 		if (parent == null)
@@ -54,6 +71,11 @@ class Node
 		return current_path;
 	}
 	
+	/**
+	 * make a deep copy of the node
+	 * 
+	 * @return
+	 */
 	public Node copy()
 	{
 		Node returnable = new Node(position.deepCopy(), matrix_id, node_type, hueristic_distance);
@@ -63,6 +85,10 @@ class Node
 		return returnable;
 	}
 	
+	/**
+	 * get a string representation of the node
+	 * 
+	 */
 	public String toString()
 	{
 		String type = "regular";

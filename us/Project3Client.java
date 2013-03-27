@@ -108,8 +108,6 @@ public class Project3Client extends TeamClient
 	private HashMap<UUID, LinkedList<State>> object_plans = new HashMap<UUID, LinkedList<State>>();
 	
 	// some new logic properties
-	private final int ENERGYCUTOFF = 600;
-	private final int MONEYCUTOFF = 600;
 	private final int EMERGENCYMONEY = 1000;
 	private final int EMERGENCYENERGY = 300;
 	
@@ -145,6 +143,10 @@ public class Project3Client extends TeamClient
 	// keep track of the number of iterations the game loops through.
 	private int game_loops = 5;
 	
+	/**
+	 * Initialize most variables, we've started moving these outside initialize to be initialized with the constructor.
+	 * 
+	 */
 	@Override
 	public void initialize()
 	{
@@ -163,7 +165,13 @@ public class Project3Client extends TeamClient
 		random = new Random();
 	}
 	
-	// start here
+	/**
+	 * This is responsible for creating a plan for each ship independently, and then calculating any necessary details such as astar. 
+	 * Additionally for this project we included some base modifications.
+	 * 
+	 * @param space 
+	 * @param actionableObjects
+	 */
 	@Override
 	public Map<UUID, SpacewarAction> getMovementStart(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
 	{	
@@ -192,6 +200,11 @@ public class Project3Client extends TeamClient
 			for (SpacewarObject actionable : actionableObjects)
 				if (actionable instanceof Ship)
 				{
+					if(space.getCurrentTimestep() > space.getMaxTime() - game_loops)
+					{
+						continue;
+					}
+					
 					Ship ship = (Ship) actionable;
 					my_ships.add(ship);
 					int ship_number = my_ships.size() - 1; // zero based indexing
@@ -414,6 +427,16 @@ public class Project3Client extends TeamClient
 		return null;
 	}
 	
+	/**
+	 * This method will return a properly queued plan that the particular ship should follow.
+	 * 
+	 * @param space 
+	 * @param ship 
+	 * @param sub_previous this should be a start state 
+	 * @param ship_number this will be between 0 and number_of_ships 
+	 * @param number_of_ships is the current number of ships on the field.
+	 * @return queuedplan
+	 */
 	private LinkedList<State> makePlan(Toroidal2DPhysics space, Ship ship, State sub_previous, int ship_number, int number_of_ships)
 	{
 		LinkedList<State> ship_plan = null;
@@ -470,6 +493,18 @@ public class Project3Client extends TeamClient
 		return ship_plan;
 	}
 	
+	/**
+	 * this is the iterative depth first search that makes the plan
+	 * 
+	 * @param space
+	 * @param ship
+	 * @param sub_previous this is the previous state that is called recursively
+	 * @param ship_number
+	 * @param number_of_ships
+	 * @param plan_goal this is the high level plan goal such as "get asteroid"
+	 * @param depth_limit this is the current depth number which counts down as recursion occurs.
+	 * @return
+	 */
 	private LinkedList<State> recursiveMakePlan(Toroidal2DPhysics space, Ship ship, State sub_previous, int ship_number, int number_of_ships, HighLevelGoals plan_goal, int depth_limit)
 	{
 		// base case
@@ -549,6 +584,15 @@ public class Project3Client extends TeamClient
 		return null;
 	}
 	
+	/**
+	 * This is responsible for allowing the ships to work "together" on the map by dividing the map up with dividor lines that the ships wont cross.
+	 * 
+	 * @param space
+	 * @param sub_previous this is the current state you want divided via asteroids
+	 * @param ship_number this number is between 0 and number of ships
+	 * @param number_of_ships
+	 * @return
+	 */
 	private Asteroid getMapDividedClosestAsteroid(Toroidal2DPhysics space, State sub_previous, int ship_number, int number_of_ships)
 	{
 		Toroidal2DPhysics local_space = space.deepClone();
@@ -563,6 +607,7 @@ public class Project3Client extends TeamClient
 			double length = 0;
 			double pos = 0;
 			
+			// type of division
 			if (this.current_division == MapDivision.updown)
 			{
 				length = Y_RES / number_of_ships;
@@ -583,6 +628,16 @@ public class Project3Client extends TeamClient
 		return null;
 	}
 	
+	/**
+	 * a new way of handling astar is completely independent of implementation. Start and end points go in, a list of positions pops out.
+	 * 
+	 * @param space
+	 * @param start position
+	 * @param end position
+	 * @param start_object_size this is the ship (or whatever) traversing a star
+	 * @param shadow_uuid this is the ships_uuid associated with the astar path to draw some nice shadows on
+	 * @return
+	 */
 	private ArrayList<Position> independentAStar(Toroidal2DPhysics space, Position start, Position end, double start_object_size, UUID shadow_uuid)
 	{
 		ArrayList<Node> outer_nodes = new ArrayList<Node>(); // all nodes
@@ -650,6 +705,11 @@ public class Project3Client extends TeamClient
 		return a_star;
 	}
 	
+	/**
+	 * this will take a queue of states (aka, the plan) and draw it on screen with light blue lines.
+	 * 
+	 * @param plan
+	 */
 	private void drawPlan(LinkedList<State> plan)
 	{
 		int radius = 2;
@@ -670,240 +730,18 @@ public class Project3Client extends TeamClient
 		
 	}
 	
-	private ArrayList<Asteroid> get_impending_asteroid_collision_uuids(KnowledgeGraph kg, Ship ship)
-	{
-		ArrayList<Relation> relations = kg.getRelationsFrom(ship);
-		ArrayList<Asteroid> collision_asteroid = new ArrayList<Asteroid>();
-		for (Relation r : relations)
-		{
-			if (ShipApproachingAsteroid.class.isAssignableFrom(r.getClass()))
-				if (Asteroid.class.isAssignableFrom(r.B().getClass()))
-				{
-					Asteroid b = Asteroid.class.cast(r.B());
-					if (b.isMineable())
-						collision_asteroid.add(b);
-				}
-		}
-		return collision_asteroid;
-	}
-	
-	private SpacewarAction goalHueristic(Toroidal2DPhysics space, Ship ship, KnowledgeGraph kg, SpacewarAction newAction)
-	{
-		
-		// first lets find out if the enemy and our ship are going towards the same goal
-		ArrayList<Asteroid> my_asteroids = get_impending_asteroid_collision_uuids(kg, ship);
-		
-		// see if I can get it to work
-		ArrayList<Relation> a = kg.getRelationsFrom(ship, ShipApproachingAsteroid.class);
-		if (a.size() > 0)
-		{
-			ArrayList<Relation> b = kg.getRelationsTo(a.get(0).B(), ShipApproachingAsteroid.class);
-			// System.out.println(b.size() - 1 + " Other ships headed towards my asteroid");
-			
-		}
-		else
-		{
-			// System.out.println("Still A*ing");
-		}
-		
-		for (Asteroid as : my_asteroids)
-		{
-			// this.my_shadow_manager.put(ship.getId() + "my_collision", new ColorLineShadow(ship.getPosition(), as.getPosition(), Color.cyan));
-		}
-		
-		for (Ship other_ship : space.getShips())
-		{
-			if (!other_ship.getId().equals(ship.getId()))
-			{
-				ArrayList<Asteroid> other_asteroids = get_impending_asteroid_collision_uuids(kg, other_ship);
-				
-				// for (Asteroid as : other_asteroids)
-				// this.my_shadow_manager.put(other_ship.getId() + "their_collision", new ColorLineShadow(other_ship.getPosition(), as.getPosition(), Color.LIGHT_GRAY));
-				
-				// matching ids
-				for (Asteroid my_collision : my_asteroids)
-					for (Asteroid other_collision : other_asteroids)
-						if (other_collision.getId().equals(my_collision.getId()))
-						{
-							
-							// System.out.println("we are headed to the same place... HELL!");
-							double my_distance = space.findShortestDistance(ship.getPosition(), other_collision.getPosition());
-							double their_distance = space.findShortestDistance(other_ship.getPosition(), other_collision.getPosition());
-							
-							Color my_color = Color.GREEN;
-							Color their_color = Color.RED;
-							
-							if (my_distance > their_distance)
-							{
-								my_color = Color.RED;
-								their_color = Color.GREEN;
-								
-								shoot.put(ship.getId(), true);
-							}
-							
-							// draw the impending doom
-							// this.my_shadow_manager.put(ship.getId() + "my_collision", new ColorLineShadow(ship.getPosition(), other_collision.getPosition(), my_color));
-							// this.my_shadow_manager.put(other_ship.getId() + "their_collision", new ColorLineShadow(other_ship.getPosition(), other_collision.getPosition(), their_color));
-						}
-			}
-		}
-		
-		return newAction;
-	}
-	
-	// find start and goal nodes
-	// start is ship
-	// goal is calculated based on priority of asteroids, bases, beacons, etc.
-	private SpacewarObject addStartAndGoal(Toroidal2DPhysics space, Ship ship, ArrayList<Node> nodes, boolean output, ArrayList<SpacewarObject> out_goal)
-	{
-		// we add two nodes, one for start, one for destination
-		
-		if (output)
-		{
-			System.out.println("******************************************************");
-			System.out.println("*                 Start and Goal Nodes               *");
-			System.out.println("******************************************************");
-		}
-		
-		int i = 0;
-		
-		// this is our intelligent search system
-		Asteroid goal_max_asteroid = getMaxAsteroid(space);
-		ArrayList<Asteroid> goal_close_asteroids = getClosestAsteroids(space, ship.getPosition(), 6);
-		ArrayList<Base> bases = getMyBases(space);
-		Set<Beacon> beacons = space.getBeacons();
-		
-		// we want things to have lower priority depending on things
-		// like how much money we are carrying and how much energy we have left
-		HashMap<Double, SpacewarObject> relations = new HashMap<Double, SpacewarObject>();
-		PriorityQueue<Double> intelligent_select = new PriorityQueue<Double>(4);
-		for (Asteroid goal_close_asteroid : goal_close_asteroids)
-			if (goal_close_asteroid != null)
-			{
-				double distance = space.findShortestDistance(goal_close_asteroid.getPosition(), ship.getPosition());
-				intelligent_select.add(distance);
-				relations.put(distance, goal_close_asteroid);
-				
-				if (output)
-					System.out.println("Adding close astroid, distance of :" + distance);
-			}
-		for (Base base : bases)
-			if (base != null)
-			{
-				double distance = space.findShortestDistance(base.getPosition(), ship.getPosition());
-				
-				// lower the distance (aka, priority) if we have lots of money or low energy
-				distance = distance / Math.pow((ship.getMoney() / Project3Client.MONEY_RETURN), 2);
-				distance = distance * ship.getEnergy() / Project3Client.BEACON_GET;
-				
-				intelligent_select.add(distance);
-				relations.put(distance, base);
-				
-				if (output)
-					System.out.println("Adding close base, distance of :" + distance);
-			}
-		for (Beacon goal_close_beacon : beacons)
-			if (goal_close_beacon != null)
-			{
-				double distance = space.findShortestDistance(goal_close_beacon.getPosition(), ship.getPosition());
-				
-				// raise the distance as we get energy
-				distance = distance * ship.getEnergy() / Project3Client.BEACON_GET;
-				
-				intelligent_select.add(distance);
-				relations.put(distance, goal_close_beacon);
-				
-				if (output)
-					System.out.println("Adding close beacon, distance of :" + distance);
-			}
-		if (goal_max_asteroid != null)
-		{
-			double distance = space.findShortestDistance(goal_max_asteroid.getPosition(), ship.getPosition());
-			
-			// decrease distance/priority if it is higher value
-			distance = distance / Math.pow(goal_max_asteroid.getMoney() / ASTEROID_SIZE, 2);
-			
-			intelligent_select.add(distance);
-			relations.put(distance, goal_max_asteroid);
-			
-			if (output)
-				System.out.println("Adding max astroid, distance of :" + distance);
-		}
-		
-		SpacewarObject goal = null;
-		
-		while (!intelligent_select.isEmpty() && goal == null)
-		{
-			double closest_goal = 0;
-			try
-			{
-				closest_goal = intelligent_select.poll();
-			}
-			catch (NullPointerException e)
-			{
-				break;
-			}
-			
-			SpacewarObject closest_object = relations.get(closest_goal);
-			
-			// return if we have some money
-			if (Base.class.isAssignableFrom(closest_object.getClass()))
-			{
-				if (output)
-					System.out.println("picking the base");
-				goal = closest_object;
-				buy_a_base.put(ship.getId(), true);
-			}
-			else if (Beacon.class.isAssignableFrom(closest_object.getClass()))
-			{
-				if (output)
-					System.out.println("picking the beacon");
-				goal = closest_object;
-				buy_a_base.put(ship.getId(), true);
-			}
-			else if (Asteroid.class.isAssignableFrom(closest_object.getClass()))
-			{
-				if (output)
-					System.out.println("picking the asteroid " + closest_goal + " money: " + ((Asteroid) closest_object).getMoney());
-				// if (!((Asteroid) closest_object).isMoveable())
-				goal = closest_object;
-			}
-			
-			for (SpacewarObject forbidden : out_goal)
-				if (goal != null)
-					if (goal.getPosition().equals(forbidden.getPosition()))
-						goal = null;
-		}
-		
-		if (output)
-			System.out.println("Done Picking");
-		
-		// and just a catch all
-		if (goal == null)
-		{
-			return null;
-		}
-		
-		out_goal.add(goal);
-		Node goal_node = new Node(goal.getPosition(), i, NodeType.goal, 0);
-		nodes.add(goal_node);
-		i++;
-		
-		// next
-		Node start_node = new Node(ship.getPosition(), i, NodeType.start, space.findShortestDistance(ship.getPosition(), goal.getPosition()));
-		nodes.add(start_node);
-		i++;
-		
-		// remove from space so we can do collision detection
-		space.removeObject(ship);
-		if (!Base.class.isAssignableFrom(goal.getClass()))
-			space.removeObject(goal);
-		
-		return goal;
-	}
-	
-	// generate a grid of nodes in the rectangle surrounding the diagonal between start and goal
-	// be sure to pad this grid
+
+	/**
+	 * generate a grid of nodes in the rectangle surrounding the diagonal between start and goal
+	 * be sure to pad this grid
+	 * 
+	 * @param space
+	 * @param divider the relative space between points on the grid (10 is a good value)
+	 * @param padding how far behind the ship should we also include grids? (150 is a good value)
+	 * @param start is the position of the ship
+	 * @param output this is a boolean value as to print to console or not
+	 * @param nodes this should be populated with 2 nodes, 0 is the goal, 1 is the ships current position.
+	 */
 	private void calculateNodesGrid(Toroidal2DPhysics space, double divider, int padding, Position start, boolean output, ArrayList<Node> nodes)
 	{
 		if (output)
@@ -970,7 +808,17 @@ public class Project3Client extends TeamClient
 			}
 	}
 	
-	// calculate n many connections between nodes as possible
+	/**
+	 *  calculate n many connections between nodes as possible
+	 *  
+	 * @param space
+	 * @param min_distance this is how far away two nodes have to be in order to not be considered for connection ( 400 is good)
+	 * @param nodes this is just the list of nodes already calculated from the calculate nodes grid
+	 * @param output boolean value as to whether to print to console or not
+	 * @param connections the number of connections between each node to make (20 is good)
+	 * @param type this is closest connection, or furthest connection, or random connection.
+	 * @return
+	 */
 	private AdjacencyMatrixGraph calculateDistanceSetConnections(Toroidal2DPhysics space, double min_distance, ArrayList<Node> nodes, boolean output, int connections, NodeConnections type)
 	{
 		if (connections < 2)
@@ -1119,7 +967,16 @@ public class Project3Client extends TeamClient
 		return my_graph;
 	}
 	
-	// finally with all nodes connections found, find a path along the nodes.
+	
+	/**
+	 * finally with all nodes connections found, find a path along the nodes.
+	 * 
+	 * @param space
+	 * @param graph graph should already be calculated from calculateDistanceSetConnections
+	 * @param start is the current ships position, although technically this value is also contained in graph already
+	 * @param output whether to print to console or not.
+	 * @return
+	 */
 	private ArrayList<Node> AStar(Toroidal2DPhysics space, AdjacencyMatrixGraph graph, Node start, boolean output)
 	{
 		// have to stick the graph into a tree starting from start
@@ -1220,8 +1077,12 @@ public class Project3Client extends TeamClient
 		}
 	}
 	
-	// methods to help find appropriot goals
-	
+	/**
+	 * get a list of all my bases
+	 * 
+	 * @param space
+	 * @return
+	 */
 	private ArrayList<Base> getMyBases(Toroidal2DPhysics space)
 	{
 		ArrayList<Base> bases = new ArrayList<Base>();
@@ -1233,6 +1094,13 @@ public class Project3Client extends TeamClient
 		return bases;
 	}
 	
+	/**
+	 * get the closest base to a position
+	 * 
+	 * @param space
+	 * @param pos
+	 * @return
+	 */
 	private Base getClosestBase(Toroidal2DPhysics space, Position pos)
 	{
 		ArrayList<Base> bases = getMyBases(space);
@@ -1251,6 +1119,14 @@ public class Project3Client extends TeamClient
 		return closest;
 	}
 	
+	/**
+	 * get the count number of closest mineable asteroids
+	 * 
+	 * @param space
+	 * @param ship is the position you want to get close to
+	 * @param count
+	 * @return
+	 */
 	private ArrayList<Asteroid> getClosestAsteroids(Toroidal2DPhysics space, Position ship, int count)
 	{
 		// make a copy of space
@@ -1271,7 +1147,13 @@ public class Project3Client extends TeamClient
 		return asteroids;
 	}
 	
-	// returns the closest MINEABLE asteroid
+	/**
+	 * just get one closest mineable asteroid
+	 * 
+	 * @param space
+	 * @param ship
+	 * @return
+	 */
 	private Asteroid getClosestAsteroid(Toroidal2DPhysics space, Position ship)
 	{
 		Asteroid close = null;
@@ -1290,6 +1172,12 @@ public class Project3Client extends TeamClient
 		return close;
 	}
 	
+	/**
+	 * get the most expensive mineable asteroid on the map
+	 * 
+	 * @param space
+	 * @return
+	 */
 	private Asteroid getMaxAsteroid(Toroidal2DPhysics space)
 	{
 		Set<Asteroid> asteroids = space.getAsteroids();
@@ -1305,6 +1193,13 @@ public class Project3Client extends TeamClient
 		return max_asteroid;
 	}
 	
+	/**
+	 * get the closest beacon to a position
+	 * 
+	 * @param space
+	 * @param ship
+	 * @return
+	 */
 	private Beacon getClosestBeacon(Toroidal2DPhysics space, Position ship)
 	{
 		Set<Beacon> beacons = space.getBeacons();
@@ -1324,8 +1219,16 @@ public class Project3Client extends TeamClient
 		return min_beacon;
 	}
 	
-	// methods that are needed to calculated math values
-	
+	/**
+	 * linearly interpolate between two values
+	 * 
+	 * @param min_x
+	 * @param max_x
+	 * @param between should be between min_x and max_x
+	 * @param min_y
+	 * @param max_y
+	 * @return a value between min_y and max_y
+	 */
 	private double lerp(double min_x, double max_x, double between, double min_y, double max_y)
 	{
 		double numerator1 = min_y * (between - max_x);
@@ -1338,15 +1241,15 @@ public class Project3Client extends TeamClient
 		return final_value;
 	}
 	
-	@SuppressWarnings("unused")
-	private Position get_half_way_point(Position a, Position b)
-	{
-		return new Position(((a.getX() + b.getX()) / 2.0), ((a.getY() + b.getY()) / 2.0));
-	}
-	
-	// everything below here is dealing with drawing and shadows
-	
-	@SuppressWarnings("unused")
+	/**
+	 * take an a star set of nodes and draw them
+	 * 
+	 * @param space
+	 * @param nodes from astar
+	 * @param min_radius the radius of dots, set to 0 to draw lines
+	 * @param node_shadows this will be returned full of shadows
+	 * @param c
+	 */
 	private void drawSolution(Toroidal2DPhysics space, ArrayList<Node> nodes, double min_radius, ArrayList<Shadow> node_shadows, Color c)
 	{
 		if (nodes == null)
@@ -1359,6 +1262,16 @@ public class Project3Client extends TeamClient
 		}
 	}
 	
+	/**
+	 * take an astar set of nodes and draw their connections
+	 * 
+	 * @param space
+	 * @param a start node
+	 * @param b end node
+	 * @param min_radius the radius of dots, set to 0 to draw lines
+	 * @param node_shadows
+	 * @param c
+	 */
 	private void drawNodesConnections(Toroidal2DPhysics space, Node a, Node b, double min_radius, ArrayList<Shadow> node_shadows, Color c)
 	{
 		node_shadows.add(new CircleShadow(1, Color.orange, a.position));
@@ -1382,6 +1295,15 @@ public class Project3Client extends TeamClient
 		}
 	}
 	
+	/**
+	 * this is used in conjunction with drawNodesConnections to draw all nodes from a star and all possible connections
+	 * 
+	 * @param space
+	 * @param temp this is the graph generated by astar
+	 * @param min_radius this is the size of dots, zero for lines
+	 * @param node_shadows the shadows returned to be drawn
+	 * @param c
+	 */
 	@SuppressWarnings("unused")
 	private void drawLines(Toroidal2DPhysics space, AdjacencyMatrixGraph temp, double min_radius, ArrayList<Shadow> node_shadows, Color c)
 	{
@@ -1400,6 +1322,9 @@ public class Project3Client extends TeamClient
 		
 	}
 	
+	/**
+	 * not used
+	 */
 	@Override
 	public void getMovementEnd(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
 	{
@@ -1407,6 +1332,10 @@ public class Project3Client extends TeamClient
 		
 	}
 	
+	/**
+	 * get the missiles fired. currently not used
+	 * 
+	 */
 	@Override
 	public Map<UUID, SpacewarPowerupEnum> getPowerups(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
 	{
@@ -1423,6 +1352,10 @@ public class Project3Client extends TeamClient
 		return powerupMap;
 	}
 	
+	/**
+	 * get the team purchase, currently only gets ships and bases if it can afford either.
+	 * 
+	 */
 	@Override
 	public Map<UUID, SpacewarPurchaseEnum> getTeamPurchases(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects, int availableMoney,
 			Map<SpacewarPurchaseEnum, Integer> purchaseCosts)
@@ -1487,6 +1420,9 @@ public class Project3Client extends TeamClient
 		return purchases;
 	}
 	
+	/**
+	 * not used
+	 */
 	@Override
 	public void shutDown()
 	{
@@ -1494,6 +1430,10 @@ public class Project3Client extends TeamClient
 		
 	}
 	
+	/**
+	 * set and clear the shadows
+	 * 
+	 */
 	@Override
 	public Set<Shadow> getShadows()
 	{
@@ -1506,7 +1446,14 @@ public class Project3Client extends TeamClient
 		return copy;
 	}
 	
-	// is the ship in a futile chase?
+	/**
+	 * check and return a boolean value if the ships is in a futile chase against an asteroid.
+	 * 
+	 * @param ship the current ship with all its features
+	 * @param space
+	 * @param goalPosition where the ship wants to go
+	 * @return
+	 */
 	public boolean futileChase(Ship ship, Toroidal2DPhysics space, Position goalPosition)
 	{
 		

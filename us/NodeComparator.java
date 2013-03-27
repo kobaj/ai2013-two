@@ -5,6 +5,9 @@ import java.util.Comparator;
 public class NodeComparator implements Comparator<Node>
 {
 	
+	/**
+	 * compare two nodes to sort them based on f(n);
+	 */
 	@Override
 	public int compare(Node o1, Node o2)
 	{

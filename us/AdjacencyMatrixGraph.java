@@ -17,10 +17,14 @@ public class AdjacencyMatrixGraph
 	// handy copy of nodes
 	private ArrayList<Node> nodes;
 	
-	// all nodes are stored in adjanccy matrix
-	// if two nodes are connected, the distance between them is stored in the matrix
-	// if they are not connected, the distance between them is 0
-	// if two nodes are the same, then they are connected.
+	/**
+	 * all nodes are stored in adjanccy matrix
+	 * if two nodes are connected, the distance between them is stored in the matrix
+	 * if they are not connected, the distance between them is 0
+	 * if two nodes are the same, then they are connected.
+	 * 
+	 * @param node_count how many nodes to make in the matrix
+	 */
 	public AdjacencyMatrixGraph(int node_count)
 	{
 		if (node_count <= 0)
@@ -31,6 +35,11 @@ public class AdjacencyMatrixGraph
 		adjacency_matrix = new double[node_count][node_count];
 	}
 	
+	/**
+	 * put a copy of the nodes into the graph
+	 * 
+	 * @param nodes
+	 */
 	public void storeNodes(ArrayList<Node> nodes)
 	{
 		// make a handy dandy copy of the nodes
@@ -39,6 +48,11 @@ public class AdjacencyMatrixGraph
 			this.nodes.add(n.copy());
 	}
 	
+	/**
+	 * get a copy of the nodes from the graph
+	 * 
+	 * @return
+	 */
 	public ArrayList<Node> getNodes()
 	{
 		ArrayList<Node> all_nodes = new ArrayList<Node>();
@@ -47,6 +61,13 @@ public class AdjacencyMatrixGraph
 		return all_nodes;
 	}
 	
+	/**
+	 * make a connection on the graph between a and b
+	 * 
+	 * @param A
+	 * @param B
+	 * @param distance
+	 */
 	public void setConnected(Node A, Node B, double distance)
 	{
 		if (A.matrix_id == B.matrix_id)
@@ -68,6 +89,13 @@ public class AdjacencyMatrixGraph
 		}
 	}
 	
+	/**
+	 * return true if a and b are connected
+	 * 
+	 * @param A
+	 * @param B
+	 * @return
+	 */
 	public boolean getConnected(Node A, Node B)
 	{
 		if (A.matrix_id == B.matrix_id)
@@ -90,7 +118,13 @@ public class AdjacencyMatrixGraph
 		
 	}
 	
-	// this is not recursive. just one level deep
+	/**
+	 * attempt to get a collection of nodes that are children to a parent.
+	 * this is not recursive. just one level deep
+	 * 
+	 * @param parent
+	 * @return
+	 */
 	public ArrayList<Node> getChildren(Node parent)
 	{
 		ArrayList<Node> children = new ArrayList<Node>();
@@ -109,7 +143,14 @@ public class AdjacencyMatrixGraph
 		return children;
 	}
 	
-	// set row major
+	/**
+	 * set if a row or column should be the default.
+	 * based on whichever row or column has more nodes.
+	 * 
+	 * @param row number of rows
+	 * @param column number of columns
+	 * @return
+	 */
 	private int[] fixRowColumn(int row, int column)
 	{
 		if (row > column)
