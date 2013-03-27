@@ -35,7 +35,7 @@ public class State {
 	public double			move_energy;
 	public double 			gain_energy;
 	public double 			distanceToBase;
-	public double			istanceToAsteroid;
+	public double			distanceToAsteroid;
 	public double			distanceToBeacon;
 	public String			teamName;
 	public Base			closest_base;
@@ -48,7 +48,15 @@ public class State {
 
 
 
-	// Check to see if the preconditions of the state are satisfied
+	/**
+	 *  Check to see if the preconditions of the state are satisfied
+	 * 
+	 * @param space
+	 * @param ship
+	 * @param last_state
+	 * @param possible_state
+	 * @return
+	 */
 	public static boolean isPreconditionsSatisfied(Toroidal2DPhysics space, Ship ship, State last_state, State possible_state){
 		State.possibleTasks action = possible_state.action;
 		
@@ -89,7 +97,13 @@ public class State {
 	}
 	
 
-	// Check to see if the state has been accomplished by some action
+	/**
+	 * Check to see if the state has been accomplished by some action
+	 * 
+	 * @param space
+	 * @param ship
+	 * @return
+	 */
 	public accomplishStates isAccomplished(Toroidal2DPhysics space, Ship ship){
 		
 		
@@ -169,7 +183,10 @@ public class State {
 		return accomplishStates.not_accomplished;
 	}
 	
-	// Overridden string representation
+	/**
+	 *  Overridden string representation
+	 *  
+	 */
 	public String toString(){
 		String s	= "State:\n-------------------------------\n";
 		s 			+="shipsDestroyed: " + shipsDestroyed.size() + "\n";
@@ -198,7 +215,12 @@ public class State {
 		return s;
 	}
 
-	// Create an initiall state	
+	/**
+	 *  Create an initiall state
+	 *  	
+	 * @param ship
+	 * @param space
+	 */
 	public State(Ship ship, Toroidal2DPhysics space){
 		this.space = space ;
 		this.shipsDestroyed = new ArrayList<Ship>();
@@ -215,7 +237,13 @@ public class State {
 
 	}
 
-	// Create a state from a previous state and an action on a subject	
+	/**
+	 *  Create a state from a previous state and an action on a subject
+	 *  	
+	 * @param prev
+	 * @param action
+	 * @param subject
+	 */
 	public State(State prev,possibleTasks action,Object subject){
 		// copy over the fields that will be incremented
 		this.space = prev.space;
@@ -297,7 +325,10 @@ public class State {
 		
 	}
 
-	// Recacluate the nearest asteroid
+	/**
+	 *  Recacluate the nearest asteroid
+	 *  
+	 */
 	private void updateNearestAsteroid(){
 		
 		Asteroid nearestAsteroid = null;
@@ -329,7 +360,10 @@ public class State {
 		this.distanceToAsteroid = space.findShortestDistance(position, nearestAsteroid.getPosition());
 	}
 
-	// Recaclulate the nearest beacon
+	/**
+	 *  Recaclulate the nearest beacon
+	 *  
+	 */
 	private void updateNearestBeacon(){
 		Beacon nearestBeacon = null;
 		for(Beacon b : space.getBeacons()){
@@ -343,7 +377,10 @@ public class State {
 		this.distanceToBeacon = space.findShortestDistance(position, nearestBeacon.getPosition());
 	}
 
-	// Recalculate the nearest base	
+	/**
+	 *  Recalculate the nearest base
+	 *  	
+	 */
 	private void updateNearestBase(){
 		Base nearestBase = null;
 		for(Base b : space.getBases()){
@@ -356,7 +393,12 @@ public class State {
 
 	}
 
-	// Recalculate the ship's energy	
+	/**
+	 *  Recalculate the ship's energy
+	 *  	
+	 * @param dest
+	 * @return
+	 */
 	private double updateEnergy(Position dest){
 		int mpg = 5; // this is awesome
 		
