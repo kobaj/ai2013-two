@@ -15,38 +15,41 @@ import spacewar2.utilities.Position;
 
 public class State {
 
+	// The possible actions that could lead to a particular state
 	public enum possibleTasks {mineAsteroid, moveToPosition, getBeacon, destroyShip, goToBase, InitialTask};
-	
+
+	// The possible stages of completeness of the state
+	public enum accomplishStates {accomplished, recalculate_plan, not_accomplished};
+
+	// distance from goal necessary to assume it's accomplished
+	final public static int SUBGOAL_DISTANCE = 30;
+
+	// The attributes of the state
 	public Toroidal2DPhysics	space;
 	public ArrayList<Ship>		shipsDestroyed;
 	public ArrayList<Asteroid>	asteroidsGone;
 	public ArrayList<Beacon>	beaconsGone;
-	public Position				position;
-	public int					base_money ;
-	public int 					ship_money ;
-	public double				move_energy;
-	public double 				gain_energy;
-	public double 				distanceToBase;
-	public double				distanceToAsteroid;
-	public double				distanceToBeacon;
-	public String				teamName;
-	
-	public Base					closest_base;
-	public Beacon				closest_beacon;
-	public Asteroid				closest_asteroid;
-	public Asteroid				closest_mineable_asteroid;
-	
+	public Position			position;
+	public int			base_money ;
+	public int 			ship_money ;
+	public double			move_energy;
+	public double 			gain_energy;
+	public double 			distanceToBase;
+	public double			istanceToAsteroid;
+	public double			distanceToBeacon;
+	public String			teamName;
+	public Base			closest_base;
+	public Beacon			closest_beacon;
+	public Asteroid			closest_asteroid;
+	public Asteroid			closest_mineable_asteroid;
 	public possibleTasks		action;
-	public Object				subject;
-	public Position				subjectPosition;
-	
-	// distance from goal necessary to assume it's accomplished
-	final public static int SUBGOAL_DISTANCE = 30;
-	
-	public enum accomplishStates {accomplished, recalculate_plan, not_accomplished};
-	
-	public static boolean isPreconditionsSatisfied(Toroidal2DPhysics space, Ship ship, State last_state, State possible_state)
-	{
+	public Object			subject;
+	public Position			subjectPosition;
+
+
+
+	// Check to see if the preconditions of the state are satisfied
+	public static boolean isPreconditionsSatisfied(Toroidal2DPhysics space, Ship ship, State last_state, State possible_state){
 		State.possibleTasks action = possible_state.action;
 		
 		int energy_limit = 300;
@@ -85,6 +88,8 @@ public class State {
 		return false;
 	}
 	
+
+	// Check to see if the state has been accomplished by some action
 	public accomplishStates isAccomplished(Toroidal2DPhysics space, Ship ship){
 		
 		
@@ -164,6 +169,7 @@ public class State {
 		return accomplishStates.not_accomplished;
 	}
 	
+	// Overridden string representation
 	public String toString(){
 		String s	= "State:\n-------------------------------\n";
 		s 			+="shipsDestroyed: " + shipsDestroyed.size() + "\n";
@@ -191,7 +197,8 @@ public class State {
 		
 		return s;
 	}
-	
+
+	// Create an initiall state	
 	public State(Ship ship, Toroidal2DPhysics space){
 		this.space = space ;
 		this.shipsDestroyed = new ArrayList<Ship>();
@@ -207,7 +214,8 @@ public class State {
 		updateNearestBeacon();
 
 	}
-	
+
+	// Create a state from a previous state and an action on a subject	
 	public State(State prev,possibleTasks action,Object subject){
 		// copy over the fields that will be incremented
 		this.space = prev.space;
@@ -288,7 +296,8 @@ public class State {
 		}
 		
 	}
-	
+
+	// Recacluate the nearest asteroid
 	private void updateNearestAsteroid(){
 		
 		Asteroid nearestAsteroid = null;
@@ -320,6 +329,7 @@ public class State {
 		this.distanceToAsteroid = space.findShortestDistance(position, nearestAsteroid.getPosition());
 	}
 
+	// Recaclulate the nearest beacon
 	private void updateNearestBeacon(){
 		Beacon nearestBeacon = null;
 		for(Beacon b : space.getBeacons()){
@@ -332,7 +342,8 @@ public class State {
 		this.closest_beacon = nearestBeacon;
 		this.distanceToBeacon = space.findShortestDistance(position, nearestBeacon.getPosition());
 	}
-	
+
+	// Recalculate the nearest base	
 	private void updateNearestBase(){
 		Base nearestBase = null;
 		for(Base b : space.getBases()){
@@ -344,7 +355,8 @@ public class State {
 		this.distanceToBase = space.findShortestDistance(position, nearestBase.getPosition());
 
 	}
-	
+
+	// Recalculate the ship's energy	
 	private double updateEnergy(Position dest){
 		int mpg = 5; // this is awesome
 		
