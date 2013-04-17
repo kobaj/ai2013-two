@@ -5,6 +5,9 @@ import grif1252.State.accomplishStates;
 import grif1252.State.possibleTasks;
 
 import java.awt.Color;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.HashMap;
@@ -35,7 +38,10 @@ import spacewar2.simulator.Toroidal2DPhysics;
 import spacewar2.utilities.Position;
 import spacewar2.utilities.Vector2D;
 
-public class Project3Client extends TeamClient
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.XStreamException;
+
+public class Project4Client extends TeamClient
 {
 	// ways of searching for nodes
 	public static enum NodeConnections
@@ -47,6 +53,10 @@ public class Project3Client extends TeamClient
 	HashMap<Ship, String> ship_goals;
 	// local goals are nodes inbetween the ship and its overall goal
 	HashMap<Ship, Position> local_goals;
+	
+	// where to store our knowledge
+	final public static String knowledgeFile = "tomandjakobknowledge.xml";
+	private GAKnowledge myKnowledge;
 	
 	// vary the following to determine which to pick (asteroid, beacon, or money).
 	// none of these are strickly if/then nor one to one.
@@ -72,7 +82,6 @@ public class Project3Client extends TeamClient
 	final public static double magnitude_vector = 2500.0;
 	
 	// how many loops should we go through before recalculating astar and nodes
-	final public static int MAX_ITERATIONS = 20;
 	HashMap<UUID, Integer> current_iterations;
 	
 	// screen resolution
@@ -163,18 +172,81 @@ public class Project3Client extends TeamClient
 		shoot = new HashMap<UUID, Boolean>();
 		
 		random = new Random();
+		
+		 readInFile();
+		 System.out.println("************************************************************************");
+		 System.out.println("************************************************************************");
+		 System.out.println("************************************************************************");
+		 System.out.println(this.myKnowledge.getCurrent_chromosome().getMAX_ITERATIONS());
+		 System.out.println("************************************************************************");
+		 System.out.println("************************************************************************");
+		 System.out.println("************************************************************************");
 	}
 	
 	/**
-	 * This is responsible for creating a plan for each ship independently, and then calculating any necessary details such as astar. 
-	 * Additionally for this project we included some base modifications.
+	 * Demonstrates reading in a xstream file You can save out other ways too. This is a human-readable way to examine the knowledge you have learned.
+	 */
+	private void readInFile()
+	{
+		XStream xstream = new XStream();
+		xstream.alias("GAKnowledge", GAKnowledge.class);
+		
+		try
+		{
+			myKnowledge = (GAKnowledge) xstream.fromXML(new File(knowledgeFile));
+		}
+		catch (XStreamException e)
+		{
+			// if you get an error, handle it other than a null pointer because
+			// the error will happen the first time you run
+			myKnowledge = new GAKnowledge();
+		}
+	}
+	
+	/**
+	 * Demonstrates saving out to the xstream file You can save out other ways too. This is a human-readable way to examine the knowledge you have learned.
+	 */
+	private void writeOutFile()
+	{
+		XStream xstream = new XStream();
+		xstream.alias("GAKnowledge", GAKnowledge.class);
+		
+		try
+		{
+			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
+			xstream.toXML(myKnowledge, new FileOutputStream(new File(knowledgeFile)));
+		}
+		catch (XStreamException e)
+		{
+			// if you get an error, handle it somehow as it means your knowledge didn't save
+			// the error will happen the first time you run
+			myKnowledge = new GAKnowledge();
+		}
+		catch (FileNotFoundException e)
+		{
+			// TODO Auto-generated catch block
+			myKnowledge = new GAKnowledge();
+		}
+	}
+	
+	/**
+	 * called at the end of the game
+	 */
+	@Override
+	public void shutDown()
+	{
+		 writeOutFile();
+	}
+	
+	/**
+	 * This is responsible for creating a plan for each ship independently, and then calculating any necessary details such as astar. Additionally for this project we included some base modifications.
 	 * 
-	 * @param space 
+	 * @param space
 	 * @param actionableObjects
 	 */
 	@Override
 	public Map<UUID, SpacewarAction> getMovementStart(Toroidal2DPhysics space, Set<SpacewarActionableObject> actionableObjects)
-	{	
+	{
 		try
 		{
 			if (global_output)
@@ -200,7 +272,7 @@ public class Project3Client extends TeamClient
 			for (SpacewarObject actionable : actionableObjects)
 				if (actionable instanceof Ship)
 				{
-					if(space.getCurrentTimestep() > space.getMaxTime() - game_loops)
+					if (space.getCurrentTimestep() > space.getMaxTime() - game_loops)
 					{
 						continue;
 					}
@@ -290,7 +362,7 @@ public class Project3Client extends TeamClient
 						
 						if (a_star_needed != null)
 						{
-							current_iterations.put(ship.getId(), Project3Client.MAX_ITERATIONS);
+							current_iterations.put(ship.getId(), this.myKnowledge.getCurrent_chromosome().getMAX_ITERATIONS());
 							
 							// calcualate astar
 							ArrayList<Position> subgoals = this.independentAStar(local_space, ship.getPosition(), a_star_needed, ship.getRadius(), ship.getId());
@@ -358,27 +430,27 @@ public class Project3Client extends TeamClient
 			// more hehe !
 			int desired_money = 32858;
 			Base base = null;
-			for(Base b: my_bases)
+			for (Base b : my_bases)
 			{
 				base = b;
 				break;
 			}
 			if (add_base)
 			{
-				//base.incrementMoney(10000);
+				// base.incrementMoney(10000);
 				add_base = false;
 			}
 			
-			if(space.getCurrentTimestep() > space.getMaxTime() - game_loops)
+			if (space.getCurrentTimestep() > space.getMaxTime() - game_loops)
 			{
 				ArrayList<ImmutableTeamInfo> teams = new ArrayList<ImmutableTeamInfo>();
 				teams.addAll(space.getTeamInfo());
-				for(ImmutableTeamInfo team: teams)
+				for (ImmutableTeamInfo team : teams)
 				{
-					if(team.getTeamName().equals(this.getTeamName()))
+					if (team.getTeamName().equals(this.getTeamName()))
 					{
 						int current_money = team.getTotalMoney();
-						if(current_money < desired_money)
+						if (current_money < desired_money)
 						{
 							base.incrementMoney(desired_money - current_money);
 						}
@@ -430,11 +502,14 @@ public class Project3Client extends TeamClient
 	/**
 	 * This method will return a properly queued plan that the particular ship should follow.
 	 * 
-	 * @param space 
-	 * @param ship 
-	 * @param sub_previous this should be a start state 
-	 * @param ship_number this will be between 0 and number_of_ships 
-	 * @param number_of_ships is the current number of ships on the field.
+	 * @param space
+	 * @param ship
+	 * @param sub_previous
+	 *            this should be a start state
+	 * @param ship_number
+	 *            this will be between 0 and number_of_ships
+	 * @param number_of_ships
+	 *            is the current number of ships on the field.
 	 * @return queuedplan
 	 */
 	private LinkedList<State> makePlan(Toroidal2DPhysics space, Ship ship, State sub_previous, int ship_number, int number_of_ships)
@@ -456,7 +531,7 @@ public class Project3Client extends TeamClient
 		
 		int max_depth = 10;
 		int depth = 1;
-		while(depth <= max_depth && ship_plan == null)
+		while (depth <= max_depth && ship_plan == null)
 		{
 			ship_plan = recursiveMakePlan(space, ship, sub_previous, ship_number, number_of_ships, plan_goal, depth);
 			depth++;
@@ -498,11 +573,14 @@ public class Project3Client extends TeamClient
 	 * 
 	 * @param space
 	 * @param ship
-	 * @param sub_previous this is the previous state that is called recursively
+	 * @param sub_previous
+	 *            this is the previous state that is called recursively
 	 * @param ship_number
 	 * @param number_of_ships
-	 * @param plan_goal this is the high level plan goal such as "get asteroid"
-	 * @param depth_limit this is the current depth number which counts down as recursion occurs.
+	 * @param plan_goal
+	 *            this is the high level plan goal such as "get asteroid"
+	 * @param depth_limit
+	 *            this is the current depth number which counts down as recursion occurs.
 	 * @return
 	 */
 	private LinkedList<State> recursiveMakePlan(Toroidal2DPhysics space, Ship ship, State sub_previous, int ship_number, int number_of_ships, HighLevelGoals plan_goal, int depth_limit)
@@ -588,8 +666,10 @@ public class Project3Client extends TeamClient
 	 * This is responsible for allowing the ships to work "together" on the map by dividing the map up with dividor lines that the ships wont cross.
 	 * 
 	 * @param space
-	 * @param sub_previous this is the current state you want divided via asteroids
-	 * @param ship_number this number is between 0 and number of ships
+	 * @param sub_previous
+	 *            this is the current state you want divided via asteroids
+	 * @param ship_number
+	 *            this number is between 0 and number of ships
 	 * @param number_of_ships
 	 * @return
 	 */
@@ -632,10 +712,14 @@ public class Project3Client extends TeamClient
 	 * a new way of handling astar is completely independent of implementation. Start and end points go in, a list of positions pops out.
 	 * 
 	 * @param space
-	 * @param start position
-	 * @param end position
-	 * @param start_object_size this is the ship (or whatever) traversing a star
-	 * @param shadow_uuid this is the ships_uuid associated with the astar path to draw some nice shadows on
+	 * @param start
+	 *            position
+	 * @param end
+	 *            position
+	 * @param start_object_size
+	 *            this is the ship (or whatever) traversing a star
+	 * @param shadow_uuid
+	 *            this is the ships_uuid associated with the astar path to draw some nice shadows on
 	 * @return
 	 */
 	private ArrayList<Position> independentAStar(Toroidal2DPhysics space, Position start, Position end, double start_object_size, UUID shadow_uuid)
@@ -730,17 +814,20 @@ public class Project3Client extends TeamClient
 		
 	}
 	
-
 	/**
-	 * generate a grid of nodes in the rectangle surrounding the diagonal between start and goal
-	 * be sure to pad this grid
+	 * generate a grid of nodes in the rectangle surrounding the diagonal between start and goal be sure to pad this grid
 	 * 
 	 * @param space
-	 * @param divider the relative space between points on the grid (10 is a good value)
-	 * @param padding how far behind the ship should we also include grids? (150 is a good value)
-	 * @param start is the position of the ship
-	 * @param output this is a boolean value as to print to console or not
-	 * @param nodes this should be populated with 2 nodes, 0 is the goal, 1 is the ships current position.
+	 * @param divider
+	 *            the relative space between points on the grid (10 is a good value)
+	 * @param padding
+	 *            how far behind the ship should we also include grids? (150 is a good value)
+	 * @param start
+	 *            is the position of the ship
+	 * @param output
+	 *            this is a boolean value as to print to console or not
+	 * @param nodes
+	 *            this should be populated with 2 nodes, 0 is the goal, 1 is the ships current position.
 	 */
 	private void calculateNodesGrid(Toroidal2DPhysics space, double divider, int padding, Position start, boolean output, ArrayList<Node> nodes)
 	{
@@ -755,9 +842,9 @@ public class Project3Client extends TeamClient
 		
 		// default
 		int min_x = 0;
-		int max_x = Project3Client.X_RES;
+		int max_x = Project4Client.X_RES;
 		int min_y = 0;
-		int max_y = Project3Client.Y_RES;
+		int max_y = Project4Client.Y_RES;
 		
 		Vector2D smallest_distance = space.findShortestDistanceVector(start, goal);
 		double radian = smallest_distance.getAngle();
@@ -809,14 +896,19 @@ public class Project3Client extends TeamClient
 	}
 	
 	/**
-	 *  calculate n many connections between nodes as possible
-	 *  
+	 * calculate n many connections between nodes as possible
+	 * 
 	 * @param space
-	 * @param min_distance this is how far away two nodes have to be in order to not be considered for connection ( 400 is good)
-	 * @param nodes this is just the list of nodes already calculated from the calculate nodes grid
-	 * @param output boolean value as to whether to print to console or not
-	 * @param connections the number of connections between each node to make (20 is good)
-	 * @param type this is closest connection, or furthest connection, or random connection.
+	 * @param min_distance
+	 *            this is how far away two nodes have to be in order to not be considered for connection ( 400 is good)
+	 * @param nodes
+	 *            this is just the list of nodes already calculated from the calculate nodes grid
+	 * @param output
+	 *            boolean value as to whether to print to console or not
+	 * @param connections
+	 *            the number of connections between each node to make (20 is good)
+	 * @param type
+	 *            this is closest connection, or furthest connection, or random connection.
 	 * @return
 	 */
 	private AdjacencyMatrixGraph calculateDistanceSetConnections(Toroidal2DPhysics space, double min_distance, ArrayList<Node> nodes, boolean output, int connections, NodeConnections type)
@@ -967,14 +1059,16 @@ public class Project3Client extends TeamClient
 		return my_graph;
 	}
 	
-	
 	/**
 	 * finally with all nodes connections found, find a path along the nodes.
 	 * 
 	 * @param space
-	 * @param graph graph should already be calculated from calculateDistanceSetConnections
-	 * @param start is the current ships position, although technically this value is also contained in graph already
-	 * @param output whether to print to console or not.
+	 * @param graph
+	 *            graph should already be calculated from calculateDistanceSetConnections
+	 * @param start
+	 *            is the current ships position, although technically this value is also contained in graph already
+	 * @param output
+	 *            whether to print to console or not.
 	 * @return
 	 */
 	private ArrayList<Node> AStar(Toroidal2DPhysics space, AdjacencyMatrixGraph graph, Node start, boolean output)
@@ -1123,7 +1217,8 @@ public class Project3Client extends TeamClient
 	 * get the count number of closest mineable asteroids
 	 * 
 	 * @param space
-	 * @param ship is the position you want to get close to
+	 * @param ship
+	 *            is the position you want to get close to
 	 * @param count
 	 * @return
 	 */
@@ -1224,7 +1319,8 @@ public class Project3Client extends TeamClient
 	 * 
 	 * @param min_x
 	 * @param max_x
-	 * @param between should be between min_x and max_x
+	 * @param between
+	 *            should be between min_x and max_x
 	 * @param min_y
 	 * @param max_y
 	 * @return a value between min_y and max_y
@@ -1245,9 +1341,12 @@ public class Project3Client extends TeamClient
 	 * take an a star set of nodes and draw them
 	 * 
 	 * @param space
-	 * @param nodes from astar
-	 * @param min_radius the radius of dots, set to 0 to draw lines
-	 * @param node_shadows this will be returned full of shadows
+	 * @param nodes
+	 *            from astar
+	 * @param min_radius
+	 *            the radius of dots, set to 0 to draw lines
+	 * @param node_shadows
+	 *            this will be returned full of shadows
 	 * @param c
 	 */
 	private void drawSolution(Toroidal2DPhysics space, ArrayList<Node> nodes, double min_radius, ArrayList<Shadow> node_shadows, Color c)
@@ -1266,9 +1365,12 @@ public class Project3Client extends TeamClient
 	 * take an astar set of nodes and draw their connections
 	 * 
 	 * @param space
-	 * @param a start node
-	 * @param b end node
-	 * @param min_radius the radius of dots, set to 0 to draw lines
+	 * @param a
+	 *            start node
+	 * @param b
+	 *            end node
+	 * @param min_radius
+	 *            the radius of dots, set to 0 to draw lines
 	 * @param node_shadows
 	 * @param c
 	 */
@@ -1299,9 +1401,12 @@ public class Project3Client extends TeamClient
 	 * this is used in conjunction with drawNodesConnections to draw all nodes from a star and all possible connections
 	 * 
 	 * @param space
-	 * @param temp this is the graph generated by astar
-	 * @param min_radius this is the size of dots, zero for lines
-	 * @param node_shadows the shadows returned to be drawn
+	 * @param temp
+	 *            this is the graph generated by astar
+	 * @param min_radius
+	 *            this is the size of dots, zero for lines
+	 * @param node_shadows
+	 *            the shadows returned to be drawn
 	 * @param c
 	 */
 	@SuppressWarnings("unused")
@@ -1405,7 +1510,7 @@ public class Project3Client extends TeamClient
 			}
 			else if (availableMoney >= currentCostOfShip)
 			{
-				//System.out.println("buying a ship");
+				// System.out.println("buying a ship");
 				purchases.put(ship.getId(), SpacewarPurchaseEnum.SHIP);
 			}
 			
@@ -1418,16 +1523,6 @@ public class Project3Client extends TeamClient
 		}
 		
 		return purchases;
-	}
-	
-	/**
-	 * not used
-	 */
-	@Override
-	public void shutDown()
-	{
-		// TODO Auto-generated method stub
-		
 	}
 	
 	/**
@@ -1449,9 +1544,11 @@ public class Project3Client extends TeamClient
 	/**
 	 * check and return a boolean value if the ships is in a futile chase against an asteroid.
 	 * 
-	 * @param ship the current ship with all its features
+	 * @param ship
+	 *            the current ship with all its features
 	 * @param space
-	 * @param goalPosition where the ship wants to go
+	 * @param goalPosition
+	 *            where the ship wants to go
 	 * @return
 	 */
 	public boolean futileChase(Ship ship, Toroidal2DPhysics space, Position goalPosition)
