@@ -2,6 +2,13 @@ package grif1252;
 
 public class Chromosome{
 	
+	private double fitness;
+	public double fitness(){
+		return fitness;
+	}
+	public void fitness(double score){ // include any numbers necessary to calculate fitneess if we change the metric later
+		this.fitness = score;
+	}
 	// good old fashioned American source code right here
 	private int maxIterations = 20;
 	public int maxIterations(){
@@ -53,6 +60,10 @@ public class Chromosome{
 		this.FCMinAngle = FCMinAngle;
 	}
 	
+	public Chromosome(Chromosome a){
+		this(a.maxIterations(),a.jakobsMagicMultiplier(), a.FCMinIncrease(), a.FCMinDecrease(), a.FCMinAngle());
+	}
+	
 	public Chromosome sexytime(Chromosome a, Chromosome b){
 		
 		// foreplay
@@ -96,6 +107,45 @@ public class Chromosome{
 		return new Chromosome(maxIterations, jakobsMagicMultiplier,  FCMinIncrease, FCMinDecrease, FCMinAngle);
 		
 		// lights cigarette
+	}
+
+	// bomb the fuck out of those damned japs
+	public Chromosome hiroshima(Chromosome a){
+	
+		double sensitivity = 0.01 ;
+
+		if(Math.random() < sensitivity){
+			a.maxIterations(a.maxIterations() + 1);
+		}else if(Math.random() < sensitivity){
+			a.maxIterations(a.maxIterations() - 1);
+		}
+
+		if(Math.random() < sensitivity){
+			a.jakobsMagicMultiplier(a.jakobsMagicMultiplier() + 1);
+		}else if(Math.random() < sensitivity){
+			a.jakobsMagicMultiplier(a.jakobsMagicMultiplier() - 1);
+		}
+
+		if(Math.random() < sensitivity){
+			a.FCMinAngle(a.FCMinAngle() + 1);
+		}else if(Math.random() < sensitivity){
+			a.FCMinAngle(a.FCMinAngle() - 1);
+		}
+
+		if(Math.random() < sensitivity){
+			a.FCMinIncrease(a.FCMinIncrease() + 1);
+		}else if(Math.random() < sensitivity){
+			a.FCMinIncrease(a.FCMinIncrease() - 1);
+		}
+		
+		if(Math.random() < sensitivity){
+			a.FCMinDecrease(a.FCMinDecrease() + 1);
+		}else if(Math.random() < sensitivity){
+			a.FCMinDecrease(a.FCMinDecrease() - 1);
+		}
+		
+		return new Chromosome(a);
+		
 	}
 	
 }

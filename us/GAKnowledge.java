@@ -1,5 +1,7 @@
 package grif1252;
 
+import java.util.ArrayList;
+
 public class GAKnowledge
 {
 	// I imagined this file would be our GA.
@@ -26,6 +28,14 @@ public class GAKnowledge
 	{
 		this.current_chromosome = current_chromosome;
 	}
-
+	
+	public double performace(ArrayList<Chromosome> population){
+		double total = 0;
+		for(Chromosome c : population){
+			total += c.fitness();
+		}
+		return total;
+	}
+	
 	private Chromosome current_chromosome;
 }
