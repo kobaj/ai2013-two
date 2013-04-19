@@ -155,8 +155,7 @@ public class Project4Client extends TeamClient
 	/**
 	 * Initialize most variables, we've started moving these outside initialize to be initialized with the constructor.
 	 * 
-	 */
-	@Override
+	*/
 	public void initialize()
 	{
 		ship_goals = new HashMap<Ship, String>();
@@ -232,7 +231,6 @@ public class Project4Client extends TeamClient
 	/**
 	 * called at the end of the game
 	 */
-	@Override
 	public void shutDown()
 	{
 		 writeOutFile();
@@ -1617,6 +1615,18 @@ public class Project4Client extends TeamClient
 		
 		// System.out.println("Not futile");
 		return false;
+	}
+
+	@Override
+	public void initialize(Toroidal2DPhysics space) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void shutDown(Toroidal2DPhysics space) {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }
