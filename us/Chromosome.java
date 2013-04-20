@@ -9,6 +9,7 @@ public class Chromosome{
 	public void fitness(double score){ // include any numbers necessary to calculate fitneess if we change the metric later
 		this.fitness = score;
 	}
+	
 	// good old fashioned American source code right here
 	private int maxIterations = 20;
 	public int maxIterations(){
@@ -64,7 +65,7 @@ public class Chromosome{
 		this(a.maxIterations(),a.jakobsMagicMultiplier(), a.FCMinIncrease(), a.FCMinDecrease(), a.FCMinAngle());
 	}
 	
-	public Chromosome sexytime(Chromosome a, Chromosome b){
+	public static Chromosome sexytime(Chromosome a, Chromosome b){
 		
 		// foreplay
 		int maxIterations;
@@ -110,7 +111,7 @@ public class Chromosome{
 	}
 
 	// bomb the fuck out of those damned japs
-	public Chromosome hiroshima(Chromosome a){
+	public static Chromosome hiroshima(Chromosome a){
 	
 		double sensitivity = 0.01 ;
 

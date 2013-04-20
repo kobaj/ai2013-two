@@ -22,7 +22,6 @@ import java.util.UUID;
 import spacewar2.actions.MoveAction;
 import spacewar2.actions.SpacewarAction;
 import spacewar2.actions.SpacewarPurchaseEnum;
-import spacewar2.clients.ImmutableTeamInfo;
 import spacewar2.clients.TeamClient;
 import spacewar2.objects.Asteroid;
 import spacewar2.objects.Base;
@@ -55,7 +54,7 @@ public class Project4Client extends TeamClient
 	HashMap<Ship, Position> local_goals;
 	
 	// where to store our knowledge
-	final public static String knowledgeFile = "tomandjakobknowledge.xml";
+	final public static String knowledgeFile = "grif1252/tomandjakobknowledge.xml";
 	private GAKnowledge myKnowledge;
 	
 	// vary the following to determine which to pick (asteroid, beacon, or money).
@@ -152,12 +151,17 @@ public class Project4Client extends TeamClient
 	// keep track of the number of iterations the game loops through.
 	private int game_loops = 5;
 	
+	public static String team_name;
+	
 	/**
 	 * Initialize most variables, we've started moving these outside initialize to be initialized with the constructor.
 	 * 
-	*/
-	public void initialize()
+	 */
+	@Override
+	public void initialize(Toroidal2DPhysics space)
 	{
+		team_name = this.getTeamName();
+		
 		ship_goals = new HashMap<Ship, String>();
 		local_goals = new HashMap<Ship, Position>();
 		
@@ -172,14 +176,15 @@ public class Project4Client extends TeamClient
 		
 		random = new Random();
 		
-		 readInFile();
-		 System.out.println("************************************************************************");
-		 System.out.println("************************************************************************");
-		 System.out.println("************************************************************************");
-		 System.out.println(this.myKnowledge.getCurrent_chromosome().getMAX_ITERATIONS());
-		 System.out.println("************************************************************************");
-		 System.out.println("************************************************************************");
-		 System.out.println("************************************************************************");
+		readInFile();
+		myKnowledge.initialize();
+		System.out.println("************************************************************************");
+		System.out.println("************************************************************************");
+		System.out.println("************************************************************************");
+		System.out.println(this.myKnowledge.current_chromosome().maxIterations());
+		System.out.println("************************************************************************");
+		System.out.println("************************************************************************");
+		System.out.println("************************************************************************");
 	}
 	
 	/**
@@ -231,9 +236,11 @@ public class Project4Client extends TeamClient
 	/**
 	 * called at the end of the game
 	 */
-	public void shutDown()
+	@Override
+	public void shutDown(Toroidal2DPhysics space)
 	{
-		 writeOutFile();
+		myKnowledge.shutDown(space);
+		writeOutFile();
 	}
 	
 	/**
@@ -360,7 +367,7 @@ public class Project4Client extends TeamClient
 						
 						if (a_star_needed != null)
 						{
-							current_iterations.put(ship.getId(), this.myKnowledge.getCurrent_chromosome().getMAX_ITERATIONS());
+							current_iterations.put(ship.getId(), this.myKnowledge.current_chromosome().maxIterations());
 							
 							// calcualate astar
 							ArrayList<Position> subgoals = this.independentAStar(local_space, ship.getPosition(), a_star_needed, ship.getRadius(), ship.getId());
@@ -441,20 +448,7 @@ public class Project4Client extends TeamClient
 			
 			if (space.getCurrentTimestep() > space.getMaxTime() - game_loops)
 			{
-				ArrayList<ImmutableTeamInfo> teams = new ArrayList<ImmutableTeamInfo>();
-				teams.addAll(space.getTeamInfo());
-				for (ImmutableTeamInfo team : teams)
-				{
-					if (team.getTeamName().equals(this.getTeamName()))
-					{
-						int current_money = team.getTotalMoney();
-						if (current_money < desired_money)
-						{
-							base.incrementMoney(desired_money - current_money);
-						}
-						break;
-					}
-				}
+				
 			}
 			
 			// drawing things
@@ -1616,17 +1610,4 @@ public class Project4Client extends TeamClient
 		// System.out.println("Not futile");
 		return false;
 	}
-
-	@Override
-	public void initialize(Toroidal2DPhysics space) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void shutDown(Toroidal2DPhysics space) {
-		// TODO Auto-generated method stub
-		
-	}
-	
 }

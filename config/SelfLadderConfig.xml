@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LadderConfig>
+	<!-- The number of times each match is repeated -->
+	<numRepeatMatches>10</numRepeatMatches>
+
+	<!-- The maximum number of variable (e.g. can change each match) teams in a game -->
+	<maximumNumberVariableTeams>1</maximumNumberVariableTeams>
+	
+	<!-- Write out the results to this file -->
+	<outputFileName>self-ladder.html</outputFileName>
+	
+	<!-- The list of static clients/teams.  These play in each match. -->
+	<staticTeams>
+		<HighLevelTeamConfig>
+			<teamName>RandomTeam</teamName>
+			<configFile>random-clientinit.xml</configFile>
+			<initialRegionCenterX>0</initialRegionCenterX>
+			<initialRegionCenterY>0</initialRegionCenterY>
+			<initialRegionRadius>300</initialRegionRadius>
+		</HighLevelTeamConfig>
+		<HighLevelTeamConfig>
+			<teamName>BeaconCollectorTeam</teamName>
+			<configFile>beacon-clientinit.xml</configFile>
+			<initialRegionCenterX>724</initialRegionCenterX>
+			<initialRegionCenterY>300</initialRegionCenterY>
+			<initialRegionRadius>300</initialRegionRadius>
+		</HighLevelTeamConfig>
+		<HighLevelTeamConfig>
+			<teamName>PacifistHeuristicMinerTeam</teamName>
+			<configFile>pacifist-heuristic-clientinit.xml</configFile>
+			<initialRegionCenterX>640</initialRegionCenterX>
+			<initialRegionCenterY>400</initialRegionCenterY>
+			<initialRegionRadius>300</initialRegionRadius>
+		</HighLevelTeamConfig>
+	</staticTeams>
+
+	<!-- The list of variable clients/teams.  Each will participate in numRepeatMatches but against 
+		 each other and the static teams. -->
+	<variableTeams>
+	     <HighLevelTeamConfig>
+			<teamName>JakobAndTom</teamName>
+			<configFile>spacewarinit.xml</configFile>
+			<initialRegionCenterX>350</initialRegionCenterX>
+			<initialRegionCenterY>510</initialRegionCenterY>
+			<initialRegionRadius>300</initialRegionRadius>
+		</HighLevelTeamConfig>
+		<HighLevelTeamConfig>
+			<teamName>AmysAwesomeTeam</teamName>
+			<configFile>amy-clientinit.xml</configFile>
+			<initialRegionCenterX>640</initialRegionCenterX>
+			<initialRegionCenterY>400</initialRegionCenterY>
+			<initialRegionRadius>300</initialRegionRadius>
+		</HighLevelTeamConfig>
+	</variableTeams>
+
+</LadderConfig>
