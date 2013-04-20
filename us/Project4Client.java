@@ -77,9 +77,6 @@ public class Project4Client extends TeamClient
 	// to compensate for unfindable paths
 	final public static int SQUARE_PADDING = 150;
 	
-	// when calculating a multiplication vector (so we fly faster) how far out should the vector be placed relative to our goal?
-	final public static double magnitude_vector = 2500.0;
-	
 	// how many loops should we go through before recalculating astar and nodes
 	HashMap<UUID, Integer> current_iterations;
 	
@@ -104,7 +101,6 @@ public class Project4Client extends TeamClient
 	
 	// can we buy a base?
 	private HashMap<UUID, Boolean> can_buy_base;
-	private HashMap<UUID, Boolean> buy_a_base;
 	
 	// should we shoot?
 	private HashMap<UUID, Boolean> shoot;
@@ -146,8 +142,6 @@ public class Project4Client extends TeamClient
 		LotsOfMoney, RefilledEnergy, VisitedBase, None
 	};
 	
-	private boolean add_base = true;
-	
 	// keep track of the number of iterations the game loops through.
 	private int game_loops = 5;
 	
@@ -170,8 +164,7 @@ public class Project4Client extends TeamClient
 		shadows = new HashSet<Shadow>();
 		
 		can_buy_base = new HashMap<UUID, Boolean>();
-		buy_a_base = new HashMap<UUID, Boolean>();
-		
+
 		shoot = new HashMap<UUID, Boolean>();
 		
 		random = new Random();
@@ -376,7 +369,7 @@ public class Project4Client extends TeamClient
 							
 							// set a speed multiplier, increase it if the ship is in a futile chase
 							Vector2D v = space.findShortestDistanceVector(ship.getPosition(), original_goal);
-							double jakobs_magic_multiplier = magnitude_vector / v.getMagnitude();
+							double jakobs_magic_multiplier = ((double) myKnowledge.current_chromosome().magnitude_vector()) / v.getMagnitude();
 							int toms_miracle_multiplier = 5;
 							if (futileChase(ship, space, a_star_needed))
 							{
@@ -405,51 +398,6 @@ public class Project4Client extends TeamClient
 					Base base = (Base) actionable;
 					my_bases.add(base);
 				}
-			
-			// hehe :D
-			for (int i = 0; i < my_ships.size(); i++)
-			{
-				if (i < my_bases.size())
-				{
-					Ship local_ship = my_ships.get(i);
-					
-					if (this.stop_following.containsKey(local_ship.getId()) && this.stop_following.get(local_ship.getId()))
-					{
-						// do nothing
-					}
-					else
-					{
-						// project out a tail
-						// Position original_goal = local_ship.getPosition();
-						// double trailing_distance = (Base.BASE_RADIUS + Ship.SHIP_RADIUS) * 1.5;
-						
-						// double trailing_x = trailing_distance * Math.cos(original_goal.getOrientation());
-						// double trailing_y = trailing_distance * Math.sin(original_goal.getOrientation());
-						
-						// Position extended_goal = new Position(original_goal.getX() - trailing_x, original_goal.getY() - trailing_y);
-						
-						// my_bases.get(i).setPosition(extended_goal);
-					}
-				}
-			}
-			// more hehe !
-			int desired_money = 32858;
-			Base base = null;
-			for (Base b : my_bases)
-			{
-				base = b;
-				break;
-			}
-			if (add_base)
-			{
-				// base.incrementMoney(10000);
-				add_base = false;
-			}
-			
-			if (space.getCurrentTimestep() > space.getMaxTime() - game_loops)
-			{
-				
-			}
 			
 			// drawing things
 			for (int i = 0; i < number_of_ships; i++)
@@ -1265,6 +1213,7 @@ public class Project4Client extends TeamClient
 	 * @param space
 	 * @return
 	 */
+	@SuppressWarnings("unused")
 	private Asteroid getMaxAsteroid(Toroidal2DPhysics space)
 	{
 		Set<Asteroid> asteroids = space.getAsteroids();
@@ -1509,7 +1458,7 @@ public class Project4Client extends TeamClient
 			if (can_buy_base.get(ship.getId()))
 			{
 				// if (global_output)
-				System.out.println("buying a base");
+				System.out.println("attempgin to buy a base");
 				purchases.put(ship.getId(), SpacewarPurchaseEnum.BASE);
 			}
 		}
@@ -1547,10 +1496,10 @@ public class Project4Client extends TeamClient
 	{
 		
 		// set constants
-		int minIncrease = -10; // minimum increase in distance to future position of asteroid to register
-		int minDecrease = 5; // minimum decrease in distance to current position to register
-		int minRadius = 30; // minimum distance from goal position to register as "our asteroid"
-		double maxAngleDifference = .3; // trigonometry
+		int minIncrease = myKnowledge.current_chromosome().FCMinIncrease(); // minimum increase in distance to future position of asteroid to register
+		int minDecrease = myKnowledge.current_chromosome().FCMinDecrease(); // minimum decrease in distance to current position to register
+		int minRadius = myKnowledge.current_chromosome().FCMinRadius(); // minimum distance from goal position to register as "our asteroid"
+		double maxAngleDifference = myKnowledge.current_chromosome().FCMaxAngle(); // trigonometry
 		
 		for (Asteroid a : space.getAsteroids())
 		{

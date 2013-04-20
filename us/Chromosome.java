@@ -10,7 +10,7 @@ public class Chromosome{
 		this.fitness = score;
 	}
 	
-	// good old fashioned American source code right here
+	// how many iterations before recalculating astar
 	private int maxIterations = 20;
 	public int maxIterations(){
 		return maxIterations;
@@ -19,19 +19,26 @@ public class Chromosome{
 		this.maxIterations = maxIterations;
 	}
 
-	// Jakob's standard speed regulation code from the hood
-	private int jakobsMagicMultiplier = 10;
-	public int jakobsMagicMultiplier(){
-		return jakobsMagicMultiplier;
+	// when calculating a multiplication vector (so we fly faster) how far out should the vector be placed relative to our goal?
+	private int magnitude_vector = 2500;
+	public int magnitude_vector(){
+		return magnitude_vector;
 	}
-	public void jakobsMagicMultiplier(int jakobsMagicMultiplier){
-		this.jakobsMagicMultiplier = jakobsMagicMultiplier;
+	public void magnitude_vector(int magnitude_vector){
+		this.magnitude_vector = magnitude_vector;
 	}
 	
 	// Tom's patriotic variables for futile chase detection
 	private int FCMinIncrease = -10;
 	private int FCMinDecrease = 5;
-	private int FCMinAngle = 30;
+	private int FCMinRadius = 30;
+	private double FCMaxAngle = 0.3;
+	public double FCMaxAngle(){
+		return FCMaxAngle;
+	}
+	public void FCMaxAngle(Double input){
+		FCMaxAngle = input;
+	}
 	public int FCMinIncrease(){
 		return FCMinIncrease;
 	}
@@ -44,35 +51,37 @@ public class Chromosome{
 	public void FCMinDecrease(int FCMinDecrease){
 		this.FCMinDecrease = FCMinDecrease;
 	}	
-	public int FCMinAngle(){
-		return FCMinAngle;
+	public int FCMinRadius(){
+		return FCMinRadius;
 	}
-	public void FCMinAngle(int FCMinAngle){
-		this.FCMinAngle = FCMinAngle;
+	public void FCMinRadius(int FCMinAngle){
+		this.FCMinRadius = FCMinAngle;
 	}
 
 	// some kind of unGodly spawning function, unless it's called as the result of two chromosomes 
 	// combining in a loving act of algorithmic computation
-	public Chromosome(int maxIterations, int jakobsMagicMultiplier, int FCMinIncrease, int FCMinDecrease, int FCMinAngle){
+	public Chromosome(int maxIterations, int magnitude_vector, int FCMinIncrease, int FCMinDecrease, int FCMinRadius, double FCMaxAngle){
 		this.maxIterations = maxIterations;
-		this.jakobsMagicMultiplier = jakobsMagicMultiplier;
+		this.magnitude_vector = magnitude_vector;
 		this.FCMinIncrease = FCMinIncrease;
 		this.FCMinDecrease = FCMinDecrease;
-		this.FCMinAngle = FCMinAngle;
+		this.FCMinRadius = FCMinRadius;
+		this.FCMaxAngle = FCMaxAngle;
 	}
 	
 	public Chromosome(Chromosome a){
-		this(a.maxIterations(),a.jakobsMagicMultiplier(), a.FCMinIncrease(), a.FCMinDecrease(), a.FCMinAngle());
+		this(a.maxIterations(),a.magnitude_vector(), a.FCMinIncrease(), a.FCMinDecrease(), a.FCMinRadius(), a.FCMaxAngle);
 	}
 	
 	public static Chromosome sexytime(Chromosome a, Chromosome b){
 		
 		// foreplay
 		int maxIterations;
-		int jakobsMagicMultiplier;
+		int magnitude_vector;
 		int FCMinIncrease;
 		int FCMinDecrease;
-		int FCMinAngle ;
+		int FCMinRadius;
+		double FCMaxAngle;
 		
 		// do it
 		
@@ -83,9 +92,9 @@ public class Chromosome{
 		}
 		
 		if(Math.random() < 0.5){
-			jakobsMagicMultiplier = a.jakobsMagicMultiplier();
+			magnitude_vector = a.magnitude_vector();
 		}else{
-			jakobsMagicMultiplier = b.jakobsMagicMultiplier();
+			magnitude_vector = b.magnitude_vector();
 		}
 	
 		if(Math.random() < 0.5){
@@ -100,12 +109,17 @@ public class Chromosome{
 			FCMinDecrease = b.FCMinDecrease();
 		}
 		if(Math.random() < 0.5){
-			FCMinAngle = a.FCMinAngle();
+			FCMinRadius = a.FCMinRadius();
 		}else{
-			FCMinAngle = b.FCMinAngle();
+			FCMinRadius = b.FCMinRadius();
+		}
+		if(Math.random() < 0.5){
+			FCMaxAngle = a.FCMaxAngle();
+		}else{
+			FCMaxAngle = b.FCMaxAngle();
 		}
 		
-		return new Chromosome(maxIterations, jakobsMagicMultiplier,  FCMinIncrease, FCMinDecrease, FCMinAngle);
+		return new Chromosome(maxIterations, magnitude_vector,  FCMinIncrease, FCMinDecrease, FCMinRadius, FCMaxAngle);
 		
 		// lights cigarette
 	}
@@ -116,33 +130,39 @@ public class Chromosome{
 		double sensitivity = 0.01 ;
 
 		if(Math.random() < sensitivity){
-			a.maxIterations(a.maxIterations() + 1);
+			a.maxIterations(a.maxIterations() + (int)GAKnowledge.randomDouble(1,10));
 		}else if(Math.random() < sensitivity){
-			a.maxIterations(a.maxIterations() - 1);
+			a.maxIterations(a.maxIterations() - (int)GAKnowledge.randomDouble(1,10));
 		}
 
 		if(Math.random() < sensitivity){
-			a.jakobsMagicMultiplier(a.jakobsMagicMultiplier() + 1);
+			a.magnitude_vector(a.magnitude_vector() + (int)GAKnowledge.randomDouble(1,10));
 		}else if(Math.random() < sensitivity){
-			a.jakobsMagicMultiplier(a.jakobsMagicMultiplier() - 1);
+			a.magnitude_vector(a.magnitude_vector() - (int)GAKnowledge.randomDouble(1,10));
 		}
 
 		if(Math.random() < sensitivity){
-			a.FCMinAngle(a.FCMinAngle() + 1);
+			a.FCMinRadius(a.FCMinRadius() + (int)GAKnowledge.randomDouble(1,10));
 		}else if(Math.random() < sensitivity){
-			a.FCMinAngle(a.FCMinAngle() - 1);
+			a.FCMinRadius(a.FCMinRadius() - (int)GAKnowledge.randomDouble(1,10));
 		}
 
 		if(Math.random() < sensitivity){
-			a.FCMinIncrease(a.FCMinIncrease() + 1);
+			a.FCMinIncrease(a.FCMinIncrease() + (int)GAKnowledge.randomDouble(1,10));
 		}else if(Math.random() < sensitivity){
-			a.FCMinIncrease(a.FCMinIncrease() - 1);
+			a.FCMinIncrease(a.FCMinIncrease() - (int)GAKnowledge.randomDouble(1,10));
 		}
 		
 		if(Math.random() < sensitivity){
-			a.FCMinDecrease(a.FCMinDecrease() + 1);
+			a.FCMinDecrease(a.FCMinDecrease() + (int)GAKnowledge.randomDouble(1,10));
 		}else if(Math.random() < sensitivity){
-			a.FCMinDecrease(a.FCMinDecrease() - 1);
+			a.FCMinDecrease(a.FCMinDecrease() - (int)GAKnowledge.randomDouble(1,10));
+		}
+		
+		if(Math.random() < sensitivity){
+			a.FCMaxAngle(a.FCMaxAngle() + GAKnowledge.randomDouble(0,1));
+		}else if(Math.random() < sensitivity){
+			a.FCMaxAngle(a.FCMaxAngle() - GAKnowledge.randomDouble(0,1));
 		}
 		
 		return new Chromosome(a);

@@ -26,8 +26,8 @@ public class GAKnowledge
 	
 	private ArrayList<Chromosome> population = new ArrayList<Chromosome>();
 	
-	public static int people_in_generation = 10;
-	public static int number_to_breed = 5;
+	public static int people_in_generation = 25;
+	public static int number_to_breed = 11;
 	
 	private int generation_number = 1;
 	private int individual_number = 0;
@@ -148,10 +148,11 @@ public class GAKnowledge
 	public Chromosome generate_random_chromosome()
 	{
 		return new Chromosome((int) randomDouble(0, 100), // max iterations
-				(int) randomDouble(0, 100), // magic multiplier
-				(int) randomDouble(0, 100), // FCMin increase
-				(int) randomDouble(0, 100), // FCMin decrease
-				(int) randomDouble(0, 100) // Fmin angle
+				(int) randomDouble(0, 10000), // magic multiplier
+				(int) randomDouble(-100, 100), // FCMin increase
+				(int) randomDouble(-100, 100), // FCMin decrease
+				(int) randomDouble(0, 100), // fmin radius
+				randomDouble(-2,2) // Fmax angle
 		);
 	}
 	
