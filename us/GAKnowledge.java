@@ -90,6 +90,13 @@ public class GAKnowledge
 			
 			// and add in our performance
 			this.performance_measure.add(this.performace(population));
+			
+			// finally set the new population
+			population.clear();
+			population = null;
+			population = new_population;
+			
+			System.gc();
 		}
 		
 		current_chromosome = null;
