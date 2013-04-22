@@ -80,8 +80,11 @@ public class GAKnowledge
 			{
 				// pick two parents
 				// subtract one to account for index
-				int parent_index_1 = (int) randomDouble((people_in_generation - number_to_breed) - 1, people_in_generation - 1);
-				int parent_index_2 = (int) randomDouble((people_in_generation - number_to_breed) - 1, people_in_generation - 1);
+				//int parent_index_1 = (int) randomDouble((people_in_generation - number_to_breed) - 1, people_in_generation - 1);
+				//int parent_index_2 = (int) randomDouble((people_in_generation - number_to_breed) - 1, people_in_generation - 1);
+				
+				int parent_index_1 = getWeightRandomIndex();
+				int parent_index_2 = getWeightRandomIndex();
 				
 				Chromosome child = Chromosome.sexytime(population.get(parent_index_2), population.get(parent_index_1));
 				child = Chromosome.hiroshima(child);
@@ -100,6 +103,48 @@ public class GAKnowledge
 		}
 		
 		current_chromosome = null;
+	}
+	
+	/**
+	 * calculate a random index of a parent that is weighted based on rank
+	 * the people in generation must be sorted
+	 * 
+	 * @return
+	 */
+	private int getWeightRandomIndex()
+	{
+		double totalWeight = 0.0d;
+		for(double x = 0; x < people_in_generation; x++)
+		{
+			// weight function
+			totalWeight += weightFunction(x);
+		}
+		
+		// Now choose a random item
+		int randomIndex = -1;
+		double random = Math.random() * totalWeight;
+		for (double e = 0; e < people_in_generation; e++)
+		{
+		    random -= weightFunction(e);
+		    if (random <= 0.0d)
+		    {
+		        randomIndex = (int)e;
+		        break;
+		    }
+		}
+		
+		return randomIndex;
+	}
+	
+	/**
+	 * the function that calculates a weight for an index.
+	 * 
+	 * @param index
+	 * @return
+	 */
+	private double weightFunction(double index)
+	{
+		 return Math.pow(Math.E, (index/(double)people_in_generation));
 	}
 	
 	/**
