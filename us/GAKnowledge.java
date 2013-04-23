@@ -144,7 +144,8 @@ public class GAKnowledge
 	 */
 	private double weightFunction(double index)
 	{
-		 return Math.pow(Math.E, (index/(double)people_in_generation));
+		 //return Math.pow(Math.E, (index/(double)people_in_generation));
+		return Math.pow((1.0 / (double)people_in_generation) * index, 2);
 	}
 	
 	/**
