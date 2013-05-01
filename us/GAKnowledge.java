@@ -7,15 +7,25 @@ import java.util.Comparator;
 import spacewar2.clients.ImmutableTeamInfo;
 import spacewar2.simulator.Toroidal2DPhysics;
 
+/**
+ * Compares chromosomes by score
+ */
 class ChromosomeComparator implements Comparator<Chromosome>
 {
+	
+	/**
+	 * Compare the fitness of two individuals
+	 */
 	@Override
 	public int compare(Chromosome o1, Chromosome o2)
 	{
 		return Double.compare((o1.fitness()), (o2.fitness()));
 	}
 }
-
+/**
+ * Creates the knowledge file by running a GA on our chromosome
+ *
+ */
 public class GAKnowledge
 {
 	// I imagined this file would be our GA.
@@ -34,6 +44,9 @@ public class GAKnowledge
 	
 	private ArrayList<Double> performance_measure = new ArrayList<Double>();
 	
+	/**
+	 * generate the first generation
+	 */
 	public GAKnowledge()
 	{
 		// first run through
@@ -47,6 +60,9 @@ public class GAKnowledge
 		}
 	}
 	
+	/**
+	 * initialize the chromosome
+	 */
 	public void initialize()
 	{
 		current_chromosome(population.get(individual_number));
@@ -86,8 +102,8 @@ public class GAKnowledge
 				int parent_index_1 = getWeightRandomIndex();
 				int parent_index_2 = getWeightRandomIndex();
 				
-				Chromosome child = Chromosome.sexytime(population.get(parent_index_2), population.get(parent_index_1));
-				child = Chromosome.hiroshima(child);
+				Chromosome child = Chromosome.crossbreed(population.get(parent_index_2), population.get(parent_index_1));
+				child = Chromosome.mutate(child);
 				new_population.add(child);
 			}
 			
@@ -217,41 +233,73 @@ public class GAKnowledge
 		return min + (Math.random() * (max - min));
 	}
 	
+	/**
+	 * get the generation number
+	 * @return
+	 */
 	public int getGeneration_number()
 	{
 		return generation_number;
 	}
 	
+	/**
+	 * set the generation number
+	 * @param generation_number
+	 */
 	public void setGeneration_number(int generation_number)
 	{
 		this.generation_number = generation_number;
 	}
 	
+	/**
+	 * get the individual number
+	 * @return
+	 */
 	public int getIndividual_number()
 	{
 		return individual_number;
 	}
 	
+	/**
+	 * set the individual number
+	 * @param individual_number
+	 */
 	public void setIndividual_number(int individual_number)
 	{
 		this.individual_number = individual_number;
 	}
 	
+	/**
+	 * get the performance measure
+	 * @return
+	 */
 	public ArrayList<Double> getPerformance_measure()
 	{
 		return performance_measure;
 	}
 	
+	/**
+	 * set the performance measure
+	 * @param performance_measure
+	 */
 	public void setPerformance_measure(ArrayList<Double> performance_measure)
 	{
 		this.performance_measure = performance_measure;
 	}
 	
+	/**
+	 * return the population
+	 * @return
+	 */
 	public ArrayList<Chromosome> population()
 	{
 		return population;
 	}
 	
+	/**
+	 * set the population
+	 * @param population
+	 */
 	public void population(ArrayList<Chromosome> population)
 	{
 		this.population = population;
